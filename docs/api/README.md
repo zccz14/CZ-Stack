@@ -2,6 +2,8 @@
 
 CZ-Stack 的 API 文档入口必须与 `contract-package` **同源生成**，而不是维护第二份手写规范。
 
+当前仓库尚未产出 contract 包或可渲染的 API 文档 artifact；本文说明的是后续任务必须满足的入口与生成原则。
+
 ## 基本原则
 
 1. `contract-package` 是协议事实源，负责导出 OpenAPI 描述、Zod schema 与共享类型。
@@ -29,4 +31,4 @@ contract-package (OpenAPI + Zod)
 - API 文档链接应指向由 contract 生成或导出的结果。
 - README 与架构文档只说明入口与生成方式，不复制手写接口细节。
 
-当前仓库的文档目标是先明确入口与生成原则；具体展示实现将在后续模块落地时接入。
+当前仓库的文档目标是先明确入口与生成原则；具体 contract 导出、API 文档产物与展示实现将在后续模块任务中接入。
