@@ -3,7 +3,7 @@ import { Hono } from "hono";
 
 import { registerHealthRoute } from "./routes/health.js";
 
-const docsHtml = `<!doctype html>
+const renderDocsHtml = (openApiUrl: string) => `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -16,7 +16,7 @@ const docsHtml = `<!doctype html>
     <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
     <script>
       window.ui = SwaggerUIBundle({
-        url: "/openapi.json",
+        url: ${JSON.stringify(openApiUrl)},
         dom_id: "#swagger-ui",
       });
     </script>
@@ -29,7 +29,11 @@ export const createApp = () => {
   registerHealthRoute(app);
 
   app.get("/openapi.json", (context) => context.json(openApiDocument, 200));
-  app.get("/docs", (context) => context.html(docsHtml, 200));
+  app.get("/docs", (context) => {
+    const openApiUrl = new URL("./openapi.json", context.req.url).pathname;
+
+    return context.html(renderDocsHtml(openApiUrl), 200);
+  });
 
   return app;
 };
