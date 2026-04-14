@@ -1,30 +1,67 @@
-import { describe, expect, it, vi } from "vitest";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-import {
-  ContractClientError,
-  createContractClient,
-  healthErrorSchema,
-  healthPath,
-  healthResponseSchema,
-  openApiDocument,
-} from "../../modules/contract/src/index.ts";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+
+const contractPackageUrl = new URL("../../modules/contract/package.json", import.meta.url);
+const contractEntryUrl = new URL("../../modules/contract/dist/index.mjs", import.meta.url);
+
+type ContractPackageManifest = {
+  name: string;
+  exports: {
+    ".": {
+      import: string;
+      require: string;
+      types: string;
+    };
+  };
+};
+
+type ContractPackageModule = typeof import("../../modules/contract/src/index.js");
+
+let contractPackage: ContractPackageManifest;
+let contractModule: ContractPackageModule;
+
+beforeAll(async () => {
+  contractPackage = JSON.parse(await readFile(contractPackageUrl, "utf8")) as ContractPackageManifest;
+  contractModule = (await import(pathToFileURL(fileURLToPath(contractEntryUrl)).href)) as ContractPackageModule;
+});
 
 describe("contract package baseline", () => {
-  it("exports health schemas from a single contract source", () => {
-    expect(healthPath).toBe("/health");
-    expect(healthResponseSchema.parse({ status: "ok" })).toEqual({ status: "ok" });
-    expect(healthErrorSchema.parse({ code: "UNAVAILABLE", message: "offline" })).toEqual({
+  it("publishes the expected package export contract", () => {
+    expect(contractPackage.name).toBe("@cz-stack/contract");
+    expect(contractPackage.exports["."]).toEqual({
+      import: "./dist/index.mjs",
+      require: "./dist/index.cjs",
+      types: "./dist/index.d.mts",
+    });
+    expect(Object.keys(contractModule).sort()).toEqual([
+      "ContractClientError",
+      "createContractClient",
+      "healthErrorCodeSchema",
+      "healthErrorSchema",
+      "healthPath",
+      "healthResponseSchema",
+      "healthStatusSchema",
+      "openApiDocument",
+    ]);
+  });
+
+  it("exports health schemas from the built package boundary", () => {
+    expect(contractModule.healthPath).toBe("/health");
+    expect(contractModule.healthResponseSchema.parse({ status: "ok" })).toEqual({ status: "ok" });
+    expect(contractModule.healthErrorSchema.parse({ code: "UNAVAILABLE", message: "offline" })).toEqual({
       code: "UNAVAILABLE",
       message: "offline",
     });
   });
 
   it("publishes a minimal health OpenAPI document", () => {
-    expect(openApiDocument.openapi).toBe("3.1.0");
-    expect(openApiDocument.paths[healthPath]?.get?.responses["200"]?.content?.["application/json"]?.schema).toEqual({
+    expect(contractModule.openApiDocument.openapi).toBe("3.1.0");
+    expect(contractModule.openApiDocument.paths[contractModule.healthPath]?.get?.responses["200"]?.content?.["application/json"]?.schema).toEqual({
       $ref: "#/components/schemas/HealthResponse",
     });
-    expect(openApiDocument.components.schemas.HealthError).toMatchObject({
+    expect(contractModule.openApiDocument.components.schemas.HealthError).toMatchObject({
       type: "object",
       required: ["code", "message"],
     });
@@ -38,7 +75,7 @@ describe("contract package baseline", () => {
       }),
     );
 
-    const client = createContractClient({
+    const client = contractModule.createContractClient({
       baseUrl: "https://example.test/api/",
       fetch: fetcher,
     });
@@ -51,7 +88,7 @@ describe("contract package baseline", () => {
   });
 
   it("throws a typed contract error for non-ok responses", async () => {
-    const client = createContractClient({
+    const client = contractModule.createContractClient({
       baseUrl: "https://example.test",
       fetch: vi.fn().mockResolvedValue(
         new Response(JSON.stringify({ code: "UNAVAILABLE", message: "offline" }), {
@@ -63,7 +100,7 @@ describe("contract package baseline", () => {
 
     const result = client.getHealth();
 
-    await expect(result).rejects.toBeInstanceOf(ContractClientError);
+    await expect(result).rejects.toBeInstanceOf(contractModule.ContractClientError);
     await expect(result).rejects.toMatchObject({
       status: 503,
       error: { code: "UNAVAILABLE", message: "offline" },

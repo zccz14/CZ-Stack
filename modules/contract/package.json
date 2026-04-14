@@ -19,7 +19,7 @@
   "scripts": {
     "build": "pnpm --dir ../.. exec tsdown --config tsdown.config.ts --entry modules/contract/src/index.ts --out-dir modules/contract/dist",
     "typecheck": "pnpm exec tsc --project tsconfig.json --noEmit",
-    "test": "pnpm --dir ../.. exec vitest run tests/contracts/contract-package.test.ts"
+    "test": "pnpm run build && pnpm --dir ../.. exec vitest run tests/contracts/contract-package.test.ts"
   },
   "dependencies": {
     "zod": "^4.1.12"
