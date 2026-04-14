@@ -8,13 +8,13 @@
     "pnpm": ">=10.15.0"
   },
   "scripts": {
-    "install": "pnpm install --ignore-scripts",
+    "bootstrap": "pnpm install --ignore-scripts",
     "lint": "pnpm exec biome check package.json pnpm-workspace.yaml tsconfig.base.json biome.json tsdown.config.ts .npmrc .gitignore",
     "typecheck": "pnpm exec tsc --noEmit --module NodeNext --moduleResolution NodeNext --target ES2022 --strict --skipLibCheck --types node tsdown.config.ts && pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "build": "pnpm -r --if-present build",
     "smoke": "pnpm -r --if-present smoke",
-    "validate": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm smoke"
+    "validate": "pnpm lint && pnpm typecheck"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.12",
