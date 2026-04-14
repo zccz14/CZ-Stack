@@ -30,4 +30,18 @@ describe("api health route", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual(openApiDocument);
   });
+
+  it("serves a rendered docs entrypoint wired to the OpenAPI document", async () => {
+    const app = createApp();
+
+    const response = await app.request("/docs");
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/html");
+
+    const html = await response.text();
+
+    expect(html).toContain("/openapi.json");
+    expect(html).toContain("SwaggerUIBundle");
+  });
 });
