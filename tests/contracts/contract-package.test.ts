@@ -150,8 +150,10 @@ describe("contract package baseline", () => {
 
     const [input, init] = fetcher.mock.calls[0] ?? [];
     const request = input instanceof Request ? input : undefined;
+    const rawTarget = input instanceof Request ? input.url : input instanceof URL ? input.toString() : String(input);
 
     expect(getRequestedPath(input)).toBe(contractModule.healthPath);
+    expect(rawTarget).toBe(contractModule.healthPath);
     expect(request?.method ?? "GET").toBe("GET");
     expect(getAcceptHeader(input, init)).toBe("application/json");
   });
