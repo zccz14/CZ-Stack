@@ -1,0 +1,31 @@
+name: Setup Node.js and pnpm workspace
+description: Install pnpm, Node.js, dependencies, and Playwright system packages when needed.
+
+inputs:
+  install-playwright:
+    description: Install Playwright browser dependencies and browsers.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10.15.0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+
+    - name: Install workspace dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Install Playwright browsers
+      if: ${{ inputs.install-playwright == 'true' }}
+      shell: bash
+      run: pnpm exec playwright install --with-deps chromium firefox
