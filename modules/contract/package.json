@@ -31,10 +31,10 @@
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "^0.96.0",
-    "openapi-zod-client": "^1.18.3"
+    "openapi-zod-client": "^1.18.3",
+    "yaml": "^2.8.3"
   },
   "dependencies": {
-    "yaml": "^2.8.3",
     "zod": "^4.1.12"
   }
 }

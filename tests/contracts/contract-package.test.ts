@@ -109,8 +109,8 @@ describe("contract package baseline", () => {
     expect(rootPackage.scripts["openapi:check"]).toContain("generate:check");
     expect(contractPackage.scripts?.generate).toBeDefined();
     expect(contractPackage.scripts?.build).toContain("pnpm run generate");
-    expect(contractPackage.dependencies?.yaml).toBe("^2.8.3");
-    expect(contractPackage.devDependencies?.yaml).toBeUndefined();
+    expect(contractPackage.dependencies?.yaml).toBeUndefined();
+    expect(contractPackage.devDependencies?.yaml).toBe("^2.8.3");
     expect(contractPackage.scripts?.["generate:zod"]).not.toContain("node_modules");
     await expect(readFile(generatedTypesUrl, "utf8")).resolves.toContain("health");
     await expect(readFile(generatedClientUrl, "utf8")).resolves.toContain("health");

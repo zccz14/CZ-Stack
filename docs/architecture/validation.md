@@ -56,7 +56,7 @@
 
 - 目的：确认 contract 导出的 OpenAPI 文档仍符合 API 文档入口预期。
 - 预期结果：contract build 成功，且导出的 OpenAPI 版本为 `3.1.0`，包含 health path。
-- 失败先看：`modules/contract/src/openapi.ts`、`modules/contract/src/schemas/health.ts`、`modules/contract/src/index.ts`。
+- 失败先看：`modules/contract/openapi/openapi.yaml`、`modules/contract/generated/openapi.ts`、`modules/contract/src/openapi.ts`、`modules/contract/src/index.ts`。
 
 ### `pnpm release:check`
 
