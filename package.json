@@ -24,6 +24,7 @@
     "test:e2e": "pnpm test:build-fixtures && pnpm exec playwright test",
     "test": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
     "build": "pnpm -r --if-present build",
+    "gcm": "git fetch origin && git checkout origin/main",
     "smoke:cli": "pnpm --filter ./modules/cli smoke",
     "smoke": "pnpm smoke:cli",
     "validate": "pnpm lint && pnpm typecheck && pnpm test && pnpm smoke",
