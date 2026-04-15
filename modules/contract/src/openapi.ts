@@ -1,12 +1,7 @@
-import { healthErrorSchema, healthPath, healthResponseSchema } from "./schemas/health.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
-type OpenApiSchema = {
-  type: string;
-  description?: string;
-  enum?: string[];
-  properties?: Record<string, OpenApiSchema | { $ref: string }>;
-  required?: string[];
-};
+import { parse } from "yaml";
 
 export type OpenApiDocument = {
   openapi: "3.1.0";
@@ -16,73 +11,12 @@ export type OpenApiDocument = {
   };
   paths: Record<string, unknown>;
   components: {
-    schemas: Record<string, OpenApiSchema>;
+    schemas: Record<string, unknown>;
   };
 };
 
-const healthResponseProperties = healthResponseSchema.shape;
-const healthErrorProperties = healthErrorSchema.shape;
+export const healthPath = "/health";
 
-export const openApiDocument: OpenApiDocument = {
-  openapi: "3.1.0",
-  info: {
-    title: "CZ-Stack Contract",
-    version: "0.0.0",
-  },
-  paths: {
-    [healthPath]: {
-      get: {
-        operationId: "getHealth",
-        summary: "Read service health status",
-        responses: {
-          "200": {
-            description: "Healthy response",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/HealthResponse" },
-              },
-            },
-          },
-          "503": {
-            description: "Unhealthy response",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/HealthError" },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-  components: {
-    schemas: {
-      HealthResponse: {
-        type: "object",
-        required: Object.keys(healthResponseProperties),
-        properties: {
-          status: {
-            type: "string",
-            enum: [...healthResponseProperties.status.options],
-            description: "Health status reported by the service",
-          },
-        },
-      },
-      HealthError: {
-        type: "object",
-        required: Object.keys(healthErrorProperties),
-        properties: {
-          code: {
-            type: "string",
-            enum: [...healthErrorProperties.code.options],
-            description: "Stable machine-readable error code",
-          },
-          message: {
-            type: "string",
-            description: "Human-readable error detail",
-          },
-        },
-      },
-    },
-  },
-};
+const openapiSource = readFileSync(fileURLToPath(new URL("../openapi/openapi.yaml", import.meta.url)), "utf8");
+
+export const openApiDocument = parse(openapiSource) as OpenApiDocument;
