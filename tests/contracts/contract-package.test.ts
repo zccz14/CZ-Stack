@@ -107,6 +107,12 @@ describe("contract package baseline", () => {
     await expect(readFile(generatedZodUrl, "utf8")).resolves.toContain("health");
   });
 
+  it("keeps generated zod artifacts free of undeclared runtime imports", async () => {
+    const generatedZodSource = await readFile(generatedZodUrl, "utf8");
+
+    expect(generatedZodSource).not.toContain("@zodios/core");
+  });
+
   const getRequestedPath = (input: unknown) => {
     const target = input instanceof Request ? input.url : input instanceof URL ? input.toString() : String(input);
     return new URL(target, "http://contract.test").pathname;

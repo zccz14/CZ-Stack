@@ -21,7 +21,7 @@
   "scripts": {
     "generate:types": "mkdir -p ./generated && rm -rf ./generated/types.ts ./generated/_types && pnpm exec openapi-ts --input ./openapi/openapi.yaml --output ./generated/_types && printf '%s\n' '// This file is auto-generated from the /health OpenAPI contract.' 'export * from \"./_types/types.gen.js\";' > ./generated/types.ts",
     "generate:client": "mkdir -p ./generated && rm -rf ./generated/client.ts ./generated/_client && pnpm exec openapi-ts --input ./openapi/openapi.yaml --output ./generated/_client --client @hey-api/client-fetch && printf '%s\n' '// This file is auto-generated from the /health OpenAPI contract.' 'export * from \"./_client/index.js\";' > ./generated/client.ts",
-    "generate:zod": "mkdir -p ./generated && rm -f ./openapi/openapi.yaml.client.ts && pnpm exec openapi-zod-client ./openapi/openapi.yaml -o ./generated/zod.ts --export-schemas",
+    "generate:zod": "mkdir -p ./generated && rm -f ./openapi/openapi.yaml.client.ts && pnpm exec openapi-zod-client ./openapi/openapi.yaml -o ./generated/zod.ts --template ./node_modules/openapi-zod-client/src/templates/schemas-only.hbs --export-schemas",
     "generate": "pnpm run generate:types && pnpm run generate:client && pnpm run generate:zod",
     "generate:check": "pnpm run generate && git diff --exit-code -- generated openapi/openapi.yaml",
     "build": "pnpm run generate && pnpm --dir ../.. exec tsdown --config tsdown.config.ts --entry modules/contract/src/index.ts --out-dir modules/contract/dist",
