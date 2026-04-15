@@ -6,6 +6,8 @@ import { adaptGeneratedRequestForPublicFetch } from "../../modules/contract/src/
 
 const contractPackageUrl = new URL("../../modules/contract/package.json", import.meta.url);
 const contractEntryUrl = new URL("../../modules/contract/dist/index.mjs", import.meta.url);
+const contractOpenApiSourceUrl = new URL("../../modules/contract/src/openapi.ts", import.meta.url);
+const contractIndexSourceUrl = new URL("../../modules/contract/src/index.ts", import.meta.url);
 const generatedClientUrl = new URL("../../modules/contract/generated/client.ts", import.meta.url);
 const generatedTypesUrl = new URL("../../modules/contract/generated/types.ts", import.meta.url);
 const generatedZodUrl = new URL("../../modules/contract/generated/zod.ts", import.meta.url);
@@ -104,7 +106,9 @@ describe("contract package baseline", () => {
   it("moves contract package inputs to the OpenAPI generation pipeline", async () => {
     expect(rootPackage.scripts["openapi:generate"]).toBeDefined();
     expect(rootPackage.scripts["openapi:generate"]).toContain("modules/contract");
+    expect(rootPackage.scripts["openapi:check"]).toContain("generate:check");
     expect(contractPackage.scripts?.generate).toBeDefined();
+    expect(contractPackage.scripts?.build).toContain("pnpm run generate");
     expect(contractPackage.dependencies?.yaml).toBe("^2.8.3");
     expect(contractPackage.devDependencies?.yaml).toBeUndefined();
     expect(contractPackage.scripts?.["generate:zod"]).not.toContain("node_modules");
@@ -117,6 +121,20 @@ describe("contract package baseline", () => {
     const generatedZodSource = await readFile(generatedZodUrl, "utf8");
 
     expect(generatedZodSource).not.toContain("@zodios/core");
+  });
+
+  it("keeps the public root boundary free of generated leaks and runtime-only OpenAPI loaders", async () => {
+    const [entrySource, openApiSource] = await Promise.all([
+      readFile(contractIndexSourceUrl, "utf8"),
+      readFile(contractOpenApiSourceUrl, "utf8"),
+    ]);
+
+    expect(entrySource).not.toContain("export * from \"../generated");
+    expect(entrySource).not.toContain("ContractFetch");
+    expect(openApiSource).not.toContain("node:fs");
+    expect(openApiSource).not.toContain("node:url");
+    expect(openApiSource).not.toContain('from "yaml"');
+    expect(openApiSource).toContain("../generated/openapi");
   });
 
   const getRequestedPath = (input: unknown) => {
