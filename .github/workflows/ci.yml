@@ -43,14 +43,28 @@ jobs:
   playwright:
     name: Playwright
     runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/ms-playwright
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup workspace with Playwright
+      - name: Setup workspace
         uses: ./.github/actions/setup-node-pnpm
+
+      - name: Restore Playwright browser cache
+        id: playwright-cache
+        uses: actions/cache@v4
         with:
-          install-playwright: "true"
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright system dependencies
+        run: pnpm exec playwright install-deps chromium firefox
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install chromium firefox
 
       - name: Run Playwright suite
         run: pnpm test:e2e
