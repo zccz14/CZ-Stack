@@ -9,6 +9,7 @@ const repoRoot = new URL("../../", import.meta.url);
 const cliPackageUrl = new URL("../../modules/cli/package.json", import.meta.url);
 const cliBinUrl = new URL("../../modules/cli/bin/dev.js", import.meta.url);
 const cliRootUrl = new URL("../../modules/cli/", import.meta.url);
+const cliCommandSourceUrl = new URL("../../modules/cli/src/commands/health.ts", import.meta.url);
 
 const runningServers = new Set<ReturnType<typeof createServer>>();
 
@@ -88,6 +89,15 @@ describe("cli package baseline", () => {
     expect(binSource).toContain("../dist/index.mjs");
     expect(binSource).not.toContain("../src/index.ts");
     expect(binSource).not.toContain("tsx");
+  });
+
+  it("keeps base-url ownership in the CLI fetch wrapper", async () => {
+    const commandSource = await readFile(cliCommandSourceUrl, "utf8");
+
+    expect(commandSource).toContain("createContractClient({");
+    expect(commandSource).toContain("fetch:");
+    expect(commandSource).not.toContain("baseUrl:");
+    expect(commandSource).not.toContain("ContractFetch");
   });
 
   it("starts from the oclif entry, honors --base-url, and prints a structured success result", async () => {

@@ -61,6 +61,7 @@ describe("api package baseline", () => {
 
     const payload = await (await app.request(contractModule.healthPath)).json();
 
+    expect(payload).toEqual({ status: "ok" });
     expect(contractModule.healthResponseSchema.safeParse(payload).success).toBe(true);
   });
 
@@ -70,7 +71,11 @@ describe("api package baseline", () => {
     const response = await app.request("/openapi.json");
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual(contractModule.openApiDocument);
+
+    const payload = await response.json();
+
+    expect(payload).toEqual(contractModule.openApiDocument);
+    expect(payload.paths[contractModule.healthPath]).toEqual(contractModule.openApiDocument.paths[contractModule.healthPath]);
   });
 
   it("serves a rendered docs entrypoint wired to the OpenAPI document", async () => {
