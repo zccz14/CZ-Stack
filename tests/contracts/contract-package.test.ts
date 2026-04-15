@@ -145,15 +145,16 @@ describe("contract package baseline", () => {
     expect(request.headers.get("accept")).toBe("application/json");
   });
 
-  it("throws a typed contract error for non-ok responses", async () => {
+  it("throws a typed contract error for non-ok responses through the fetch-only boundary", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ code: "UNAVAILABLE", message: "offline" }), {
+        status: 503,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
     const client = contractModule.createContractClient({
-      baseUrl: "https://example.test",
-      fetch: vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ code: "UNAVAILABLE", message: "offline" }), {
-          status: 503,
-          headers: { "content-type": "application/json" },
-        }),
-      ),
+      fetch: fetcher,
     });
 
     const result = client.getHealth();
@@ -163,5 +164,11 @@ describe("contract package baseline", () => {
       status: 503,
       error: { code: "UNAVAILABLE", message: "offline" },
     });
+
+    const [request] = fetcher.mock.calls[0] ?? [];
+
+    expect(request).toBeInstanceOf(Request);
+    expect(request.url).toBe(contractModule.healthPath);
+    expect(request.method).toBe("GET");
   });
 });
