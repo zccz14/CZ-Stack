@@ -1,10 +1,13 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 const contractPackageUrl = new URL("../../modules/contract/package.json", import.meta.url);
 const contractEntryUrl = new URL("../../modules/contract/dist/index.mjs", import.meta.url);
+const rootPackageUrl = new URL("../../package.json", import.meta.url);
+const vitestWorkspaceUrl = new URL("../../vitest.workspace.ts", import.meta.url);
+const playwrightConfigUrl = new URL("../../playwright.config.ts", import.meta.url);
 
 type ContractPackageManifest = {
   name: string;
@@ -17,17 +20,34 @@ type ContractPackageManifest = {
   };
 };
 
+type RootPackageManifest = {
+  scripts: Record<string, string>;
+};
+
 type ContractPackageModule = typeof import("../../modules/contract/src/index.js");
 
 let contractPackage: ContractPackageManifest;
+let rootPackage: RootPackageManifest;
 let contractModule: ContractPackageModule;
 
 beforeAll(async () => {
   contractPackage = JSON.parse(await readFile(contractPackageUrl, "utf8")) as ContractPackageManifest;
+  rootPackage = JSON.parse(await readFile(rootPackageUrl, "utf8")) as RootPackageManifest;
   contractModule = (await import(pathToFileURL(fileURLToPath(contractEntryUrl)).href)) as ContractPackageModule;
 });
 
 describe("contract package baseline", () => {
+  it("publishes unified root validation entrypoints", async () => {
+    await expect(access(vitestWorkspaceUrl)).resolves.toBeUndefined();
+    await expect(access(playwrightConfigUrl)).resolves.toBeUndefined();
+    expect(rootPackage.scripts).toMatchObject({
+      "test:unit": expect.any(String),
+      "test:e2e": expect.any(String),
+      "smoke:cli": expect.any(String),
+      validate: expect.stringContaining("pnpm test"),
+    });
+  });
+
   it("publishes the expected package export contract", () => {
     expect(contractPackage.name).toBe("@cz-stack/contract");
     expect(contractPackage.exports["."]).toEqual({

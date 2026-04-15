@@ -53,7 +53,7 @@ const startHealthServer = async () => {
   };
 };
 
-describe("cli health command", () => {
+describe("cli package baseline", () => {
   it("publishes the expected cli package manifest", async () => {
     const cliPackage = JSON.parse(await readFile(cliPackageUrl, "utf8")) as {
       name: string;

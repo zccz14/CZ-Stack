@@ -35,7 +35,7 @@ beforeAll(async () => {
   honoModule = (await import(pathToFileURL(fileURLToPath(honoEntryUrl)).href)) as HonoModule;
 });
 
-describe("api health route", () => {
+describe("api package baseline", () => {
   it("publishes the expected api package boundary", () => {
     expect(apiPackage.name).toBe("@cz-stack/api");
     expect(apiPackage.exports["."]).toEqual({
