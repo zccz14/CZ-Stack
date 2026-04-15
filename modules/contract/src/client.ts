@@ -25,13 +25,42 @@ export type ContractClient = {
 };
 
 const generatedBaseUrl = "http://contract.internal";
+const generatedBaseOrigin = new URL(generatedBaseUrl).origin;
 const healthResponseSchema = schemas.HealthResponse;
 const healthErrorSchema = schemas.HealthError;
+
+const toRelativeRequest = (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+  const request = input instanceof Request ? input : new Request(input, init);
+  const url = new URL(request.url);
+  const target = url.origin === generatedBaseOrigin ? `${url.pathname}${url.search}${url.hash}` : request.url;
+
+  return {
+    input: target,
+    init: {
+      body: request.body,
+      cache: request.cache,
+      credentials: request.credentials,
+      headers: request.headers,
+      integrity: request.integrity,
+      keepalive: request.keepalive,
+      method: request.method,
+      mode: request.mode,
+      redirect: request.redirect,
+      referrer: request.referrer,
+      referrerPolicy: request.referrerPolicy,
+      signal: request.signal,
+    } satisfies RequestInit,
+  };
+};
 
 export const createContractClient = ({ fetch: fetchImpl }: ContractClientOptions): ContractClient => {
   const client = createGeneratedClient({
     baseUrl: generatedBaseUrl,
-    fetch: fetchImpl,
+    fetch: async (input, init) => {
+      const request = toRelativeRequest(input, init);
+
+      return fetchImpl(request.input, request.init);
+    },
   });
 
   return {
