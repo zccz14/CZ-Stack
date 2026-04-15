@@ -20,7 +20,7 @@
 - 允许依赖：`contract-package`、必要的 `tooling-package`。
 - 被谁依赖：通常只被运行入口、测试与部署配置消费。
 - 禁止：要求 `contract-package` 反向依赖服务实现；禁止把 Web/CLI 运行时逻辑下沉进 API 服务。
-- 当前落地要求：`@cz-stack/api` 已提供 `/health`、`/openapi.json`、`/docs`，其中 `/openapi.json` 与 `/docs` 必须继续由 contract 同源驱动，而不是维护手写文档副本。
+- 当前落地要求：`@cz-stack/api` 已提供 `/health` 与 `/openapi.json`；其中 `/openapi.json` 必须继续由 contract 同源驱动，API 服务不再内置 `/docs` 文档页面，也不承担文档展示职责。
 
 ### `web-app`
 
@@ -51,7 +51,7 @@
 - 允许依赖：`contract-package`、必要的 `tooling-package`。
 - 被谁依赖：通常只被文档部署流程消费。
 - 禁止：维护第二份手写 API 规范；禁止让 contract 依赖 docs-site 的展示实现。
-- 当前落地要求：在完整 docs-site 尚未存在前，README、`docs/api/README.md` 与 API 服务内置 `/docs` 一起构成首版文档入口；它们只能说明入口与生成方式，不能变成新的协议事实源。
+- 当前落地要求：在完整 docs-site 尚未存在前，README 与 `docs/api/README.md` 只负责说明文档入口与边界；API 文档展示不再由 API 服务内置 `/docs` 承担，它们也不能变成新的协议事实源。
 
 ## 依赖方向
 

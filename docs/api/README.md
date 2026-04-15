@@ -5,9 +5,9 @@ CZ-Stack 的 API 文档入口必须与 `contract-package` **同源生成**，而
 当前仓库已经落地 `@cz-stack/contract` 与 `@cz-stack/api`：
 
 - `@cz-stack/contract` 导出 OpenAPI 文档、Zod schema 与共享 client。
-- `@cz-stack/api` 提供 `/openapi.json` 与 `/docs` 两个文档入口。
+- `@cz-stack/api` 提供 `/openapi.json` 文档数据入口，不再内置 `/docs` 展示页面。
 
-因此，本文说明的是**当前基线如何访问和维护 API 文档入口**，而不是未来才会存在的理想状态。
+因此，本文说明的是**当前基线如何访问和维护 API 文档数据入口**，以及文档展示职责不属于 API 服务本身。
 
 ## 基本原则
 
@@ -21,18 +21,18 @@ CZ-Stack 的 API 文档入口必须与 `contract-package` **同源生成**，而
 ```text
 contract-package (OpenAPI + Zod)
         -> export openApiDocument
-        -> api-service exposes /openapi.json and /docs
-        -> README / docs-site link to rendered docs entry
+        -> api-service exposes /openapi.json
+        -> README / docs-site link to the exported OpenAPI document
 ```
 
 ## 当前仓库的实际入口
 
 - 合同文档源：`modules/contract/src/openapi.ts`
 - API 文档 JSON：`modules/api` 启动后访问 `/openapi.json`
-- API 文档 UI：`modules/api` 启动后访问 `/docs`
+- API 文档展示：应由 API 之外的独立文档入口承载
 - 仓库导航入口：[`../../README.md`](../../README.md) 与 [`../architecture/validation.md`](../architecture/validation.md)
 
-如果需要本地查看渲染结果，可先运行 `PORT=3100 pnpm --filter ./modules/api run dev`，再访问 `http://localhost:3100/docs`；其底层文档数据应来自同一服务暴露的 `/openapi.json`。
+如果需要本地检查当前 API 侧文档出口，可先运行 `PORT=3100 pnpm --filter ./modules/api run dev`，再访问 `http://localhost:3100/openapi.json`。
 
 ## 为什么不维护第二份手写规范
 
@@ -51,4 +51,4 @@ contract-package (OpenAPI + Zod)
 
 - 不在仓库文档中复制一份手写 endpoint 说明。
 - 不要求首版必须生成独立 SDK 包。
-- 不把 Swagger UI 的展示实现视为协议事实源；真实事实源仍然是 contract 导出。
+- 不把任何 API 内置展示实现视为协议事实源；真实事实源仍然是 contract 导出。
