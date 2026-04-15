@@ -10,11 +10,6 @@ export const openApiDocument = {
       "get": {
         "operationId": "getHealth",
         "summary": "Read service health status",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "responses": {
           "200": {
             "description": "Healthy response",
