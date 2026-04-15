@@ -1,12 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { Hono } from "hono";
 import { beforeAll, describe, expect, it } from "vitest";
 
 const apiPackageUrl = new URL("../../modules/api/package.json", import.meta.url);
 const apiEntryUrl = new URL("../../modules/api/dist/app.mjs", import.meta.url);
 const contractEntryUrl = new URL("../../modules/contract/dist/index.mjs", import.meta.url);
-const honoEntryUrl = new URL("../../modules/api/node_modules/hono/dist/index.js", import.meta.url);
 
 type ApiPackageManifest = {
   name: string;
@@ -21,18 +21,15 @@ type ApiPackageManifest = {
 
 type ApiPackageModule = typeof import("../../modules/api/src/app.js");
 type ContractPackageModule = typeof import("../../modules/contract/src/index.js");
-type HonoModule = typeof import("../../modules/api/node_modules/hono/dist/index.js");
 
 let apiPackage: ApiPackageManifest;
 let apiModule: ApiPackageModule;
 let contractModule: ContractPackageModule;
-let honoModule: HonoModule;
 
 beforeAll(async () => {
   apiPackage = JSON.parse(await readFile(apiPackageUrl, "utf8")) as ApiPackageManifest;
   apiModule = (await import(pathToFileURL(fileURLToPath(apiEntryUrl)).href)) as ApiPackageModule;
   contractModule = (await import(pathToFileURL(fileURLToPath(contractEntryUrl)).href)) as ContractPackageModule;
-  honoModule = (await import(pathToFileURL(fileURLToPath(honoEntryUrl)).href)) as HonoModule;
 });
 
 describe("api package baseline", () => {
@@ -93,7 +90,7 @@ describe("api package baseline", () => {
   });
 
   it("renders docs with a prefix-aware OpenAPI url when mounted under a subpath", async () => {
-    const root = new honoModule.Hono();
+    const root = new Hono();
 
     root.route("/api", apiModule.createApp());
 
