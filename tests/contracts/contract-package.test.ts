@@ -22,6 +22,8 @@ type ContractPackageManifest = {
     };
   };
   scripts?: Record<string, string>;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
 };
 
 type RootPackageManifest = {
@@ -102,9 +104,12 @@ describe("contract package baseline", () => {
     expect(rootPackage.scripts["openapi:generate"]).toBeDefined();
     expect(rootPackage.scripts["openapi:generate"]).toContain("modules/contract");
     expect(contractPackage.scripts?.generate).toBeDefined();
+    expect(contractPackage.dependencies?.yaml).toBe("^2.8.3");
+    expect(contractPackage.devDependencies?.yaml).toBeUndefined();
+    expect(contractPackage.scripts?.["generate:zod"]).not.toContain("node_modules");
     await expect(readFile(generatedTypesUrl, "utf8")).resolves.toContain("health");
     await expect(readFile(generatedClientUrl, "utf8")).resolves.toContain("health");
-    await expect(readFile(generatedZodUrl, "utf8")).resolves.toContain("health");
+    await expect(readFile(generatedZodUrl, "utf8")).resolves.toContain("HealthResponse");
   });
 
   it("keeps generated zod artifacts free of undeclared runtime imports", async () => {
