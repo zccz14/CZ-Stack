@@ -13,6 +13,8 @@ const cliCommandSourceUrl = new URL("../../modules/cli/src/commands/health.ts", 
 
 const runningServers = new Set<ReturnType<typeof createServer>>();
 
+const getImportSpecifiers = (source: string) => [...source.matchAll(/from\s+["']([^"']+)["']/g)].map(([, specifier]) => specifier);
+
 afterEach(async () => {
   await Promise.all(
     [...runningServers].map(async (server) => {
@@ -93,14 +95,13 @@ describe("cli package baseline", () => {
 
   it("keeps base-url ownership in the CLI fetch wrapper", async () => {
     const commandSource = await readFile(cliCommandSourceUrl, "utf8");
+    const importSpecifiers = getImportSpecifiers(commandSource);
 
-    expect(commandSource).toContain('from "@cz-stack/contract"');
-    expect(commandSource).not.toContain('from "@cz-stack/contract/generated/');
-    expect(commandSource).not.toContain("modules/contract/generated/");
-    expect(commandSource).toContain("createContractClient({");
-    expect(commandSource).toContain("fetch:");
-    expect(commandSource).not.toContain("baseUrl:");
-    expect(commandSource).not.toContain("ContractFetch");
+    expect(importSpecifiers).toContain("@cz-stack/contract");
+    expect(importSpecifiers.some((specifier) => specifier.includes("contract/generated"))).toBe(false);
+    expect(commandSource).toMatch(/createContractClient\s*\(\s*\{[\s\S]*fetch\s*:/);
+    expect(commandSource).not.toMatch(/createContractClient\s*\(\s*\{[\s\S]*baseUrl\s*:/);
+    expect(commandSource).not.toMatch(/\bContractFetch\b/);
   });
 
   it("starts from the oclif entry, honors --base-url, and prints a structured success result", async () => {
