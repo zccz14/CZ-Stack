@@ -1,11 +1,11 @@
-import type { HealthError, HealthResponse } from "./schemas/health.js";
-import { healthErrorSchema, healthPath, healthResponseSchema } from "./schemas/health.js";
-
-export type ContractFetch = typeof fetch;
+import { getHealth } from "../generated/client.js";
+import { createClient as createGeneratedClient } from "../generated/_client/client/index.js";
+import type { GetHealthError, GetHealthResponse, HealthError, HealthResponse } from "../generated/types.js";
+import { schemas } from "../generated/zod.js";
+import { healthPath } from "./openapi.js";
 
 export type ContractClientOptions = {
-  baseUrl: string;
-  fetch?: ContractFetch;
+  fetch: typeof fetch;
 };
 
 export class ContractClientError extends Error {
@@ -24,23 +24,30 @@ export type ContractClient = {
   getHealth(): Promise<HealthResponse>;
 };
 
-const joinUrl = (baseUrl: string, path: string) => new URL(path.replace(/^\//, ""), `${baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`}`).toString();
+const generatedBaseUrl = "http://contract.internal";
+const healthResponseSchema = schemas.HealthResponse;
+const healthErrorSchema = schemas.HealthError;
 
-export const createContractClient = ({ baseUrl, fetch: fetchImpl = fetch }: ContractClientOptions): ContractClient => ({
+export const createContractClient = ({ fetch: fetchImpl }: ContractClientOptions): ContractClient => {
+  const client = createGeneratedClient({
+    baseUrl: generatedBaseUrl,
+    fetch: fetchImpl,
+  });
+
+  return {
   async getHealth() {
-    const response = await fetchImpl(joinUrl(baseUrl, healthPath), {
-      method: "GET",
+    const result = await getHealth({
+      client,
       headers: {
         accept: "application/json",
       },
     });
 
-    const payload = await response.json();
-
-    if (!response.ok) {
-      throw new ContractClientError(response.status, healthErrorSchema.parse(payload));
+    if (result.error) {
+      throw new ContractClientError(result.response.status, healthErrorSchema.parse(result.error satisfies GetHealthError));
     }
 
-    return healthResponseSchema.parse(payload);
+    return healthResponseSchema.parse(result.data satisfies GetHealthResponse) satisfies HealthResponse;
   },
-});
+  };
+};
