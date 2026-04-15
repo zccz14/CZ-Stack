@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 const repoRoot = new URL("../../", import.meta.url);
 const cliPackageUrl = new URL("../../modules/cli/package.json", import.meta.url);
 const cliBinUrl = new URL("../../modules/cli/bin/dev.js", import.meta.url);
+const cliRootUrl = new URL("../../modules/cli/", import.meta.url);
 
 const runningServers = new Set<ReturnType<typeof createServer>>();
 
@@ -57,22 +58,46 @@ describe("cli health command", () => {
     const cliPackage = JSON.parse(await readFile(cliPackageUrl, "utf8")) as {
       name: string;
       bin: Record<string, string>;
+      oclif?: {
+        bin?: string;
+        commands?: {
+          identifier?: string;
+          strategy?: string;
+          target?: string;
+        };
+      };
     };
 
     expect(cliPackage.name).toBe("@cz-stack/cli");
     expect(cliPackage.bin).toEqual({
       "cz-stack": "bin/dev.js",
     });
+    expect(cliPackage.oclif).toEqual({
+      bin: "cz-stack",
+      commands: {
+        identifier: "commands",
+        strategy: "explicit",
+        target: "./dist/index.mjs",
+      },
+    });
   });
 
-  it("starts from the dev entry, honors --base-url, and prints a structured success result", async () => {
+  it("boots the published bin from built runtime instead of repo-only dev sources", async () => {
+    const binSource = await readFile(cliBinUrl, "utf8");
+
+    expect(binSource).toContain("../dist/index.mjs");
+    expect(binSource).not.toContain("../src/index.ts");
+    expect(binSource).not.toContain("tsx");
+  });
+
+  it("starts from the oclif entry, honors --base-url, and prints a structured success result", async () => {
     const server = await startHealthServer();
 
     const child = spawn(
       process.execPath,
       [cliBinUrl.pathname, "health", "--base-url", server.baseUrl],
       {
-        cwd: repoRoot,
+        cwd: cliRootUrl,
         env: process.env,
         stdio: ["ignore", "pipe", "pipe"],
       },

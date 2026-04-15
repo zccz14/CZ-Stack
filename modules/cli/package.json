@@ -16,6 +16,14 @@
       "require": "./dist/index.cjs"
     }
   },
+  "oclif": {
+    "bin": "cz-stack",
+    "commands": {
+      "strategy": "explicit",
+      "target": "./dist/index.mjs",
+      "identifier": "commands"
+    }
+  },
   "files": [
     "bin",
     "dist"
@@ -28,11 +36,6 @@
   },
   "dependencies": {
     "@cz-stack/contract": "workspace:*",
-    "@oclif/core": "^4.8.0",
-    "@oclif/plugin-help": "^6.2.44",
-    "@oclif/plugin-plugins": "^5.4.61"
-  },
-  "devDependencies": {
-    "tsx": "^4.20.6"
+    "@oclif/core": "^4.8.0"
   }
 }
