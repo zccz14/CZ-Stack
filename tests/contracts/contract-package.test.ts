@@ -75,9 +75,11 @@ describe("contract package baseline", () => {
     expect(Object.keys(contractModule).sort()).toEqual([
       "ContractClientError",
       "createContractClient",
+      "healthErrorCodeSchema",
       "healthErrorSchema",
       "healthPath",
       "healthResponseSchema",
+      "healthStatusSchema",
       "openApiDocument",
     ]);
     expect(contractModule.openApiDocument.paths[contractModule.healthPath]).toBeDefined();
@@ -85,7 +87,9 @@ describe("contract package baseline", () => {
 
   it("exports health schemas from the built package boundary", () => {
     expect(contractModule.healthPath).toBe("/health");
+    expect(contractModule.healthStatusSchema.parse("ok")).toBe("ok");
     expect(contractModule.healthResponseSchema.parse({ status: "ok" })).toEqual({ status: "ok" });
+    expect(contractModule.healthErrorCodeSchema.parse("UNAVAILABLE")).toBe("UNAVAILABLE");
     expect(contractModule.healthErrorSchema.parse({ code: "UNAVAILABLE", message: "offline" })).toEqual({
       code: "UNAVAILABLE",
       message: "offline",
@@ -97,6 +101,7 @@ describe("contract package baseline", () => {
     expect(contractModule.openApiDocument.paths[contractModule.healthPath]?.get?.responses["200"]?.content?.["application/json"]?.schema).toEqual({
       $ref: "#/components/schemas/HealthResponse",
     });
+    expect(contractModule.openApiDocument.paths[contractModule.healthPath]?.get?.security).toBeUndefined();
     expect(contractModule.openApiDocument.components.schemas.HealthError).toMatchObject({
       type: "object",
       required: ["code", "message"],
@@ -130,6 +135,8 @@ describe("contract package baseline", () => {
     ]);
 
     expect(entrySource).not.toContain("export * from \"../generated");
+    expect(entrySource).not.toContain("GetHealthResponse");
+    expect(entrySource).not.toContain("GetHealthError");
     expect(entrySource).not.toContain("ContractFetch");
     expect(openApiSource).not.toContain("node:fs");
     expect(openApiSource).not.toContain("node:url");
