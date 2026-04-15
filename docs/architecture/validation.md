@@ -36,7 +36,7 @@
 - 预期结果：Vitest workspace 与 Playwright 主路径全部通过。
 - 失败先看：
   - contract 失败：`modules/contract/src/*` 的 schema、OpenAPI 或 client 导出。
-  - api 失败：`modules/api/src/app.ts`、`modules/api/src/routes/health.ts` 与 `/openapi.json` / `/docs` 行为。
+  - api 失败：`modules/api/src/app.ts`、`modules/api/src/routes/health.ts` 与 `/health` / `/openapi.json` 行为。
   - cli 失败：`modules/cli/src/commands/health.ts` 与共享 client 使用方式。
   - web / Playwright 失败：`modules/web/src/*`、测试启动依赖与 contract-driven client 交互。
 
@@ -71,7 +71,7 @@
 - README 与 `docs/` 内的相对链接均可解析。
 - 命令名与根 `package.json` 中脚本完全一致。
 - 文档描述的是**当前已实现基线**，不是过时的“未来计划”。
-- API 文档入口始终指向 contract 同源生成的 `/openapi.json` / `/docs`，而不是第二份手写规范。
+- API 文档入口始终指向 contract 同源生成的 `/openapi.json`；若需要展示层，也应由 API 之外的文档入口承载，而不是第二份手写规范。
 
 ## 何时升级处理
 
