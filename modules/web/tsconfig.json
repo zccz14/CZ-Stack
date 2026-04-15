@@ -4,6 +4,7 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "exactOptionalPropertyTypes": false,
     "paths": {
       "@cz-stack/contract": ["../contract/src/index.ts"]
     },
