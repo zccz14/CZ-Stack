@@ -114,6 +114,14 @@ describe("db boundary package", () => {
 
     try {
       await adapter.execute(
+        "create table generated_notes (id integer primary key autoincrement, value text not null)",
+      );
+
+      await expect(
+        adapter.execute("insert into generated_notes (value) values (?)", ["generated"]),
+      ).resolves.toEqual({ changes: 1, lastInsertRowId: 1 });
+
+      await adapter.execute(
         "create table notes (id text primary key, value text not null)",
       );
 

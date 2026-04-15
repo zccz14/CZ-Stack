@@ -53,10 +53,14 @@ class SqliteAdapter implements DbAdapter {
   async execute(sql: string, bindings: DbStatementBindings = []): Promise<DbCommandResult> {
     const statement = this.#getDatabase().prepare(sql);
     const result = statement.run(...bindings);
+    const lastInsertRowid = result.lastInsertRowid;
 
     return {
       changes: Number(result.changes),
-      lastInsertRowId: typeof result.lastInsertRowid === "bigint" ? Number(result.lastInsertRowid) : null,
+      lastInsertRowId:
+        typeof lastInsertRowid === "number" || typeof lastInsertRowid === "bigint"
+          ? Number(lastInsertRowid)
+          : null,
     };
   }
 
