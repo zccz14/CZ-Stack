@@ -188,7 +188,7 @@ describe("contract package baseline", () => {
     expect(request?.method ?? "GET").toBe("GET");
   });
 
-  it("adapts body-bearing generated requests to a relative-path fetch input without losing request semantics", async () => {
+  it("adapts body-bearing generated requests to relative fetch args that survive downstream forwarding", async () => {
     const sourceRequest = new Request("http://contract.internal/widgets?draft=true", {
       body: JSON.stringify({ name: "widget" }),
       duplex: "half",
@@ -199,10 +199,18 @@ describe("contract package baseline", () => {
     });
 
     const [input, init] = adaptGeneratedRequestForPublicFetch(sourceRequest);
-    const request = input instanceof Request ? input : new Request(input, init);
+    const downstreamFetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    const callerFetch = (forwardedInput: Parameters<typeof fetch>[0], forwardedInit?: Parameters<typeof fetch>[1]) =>
+      downstreamFetch(forwardedInput, forwardedInit);
 
-    expect(input instanceof Request ? input.url : String(input)).toBe("/widgets?draft=true");
+    await callerFetch(input, init);
+
+    const [downstreamInput, downstreamInit] = downstreamFetch.mock.calls[0] ?? [];
+    const request = new Request(new URL(String(downstreamInput), "http://downstream.test"), downstreamInit);
+
+    expect(String(downstreamInput)).toBe("/widgets?draft=true");
     expect(request.method).toBe("POST");
+    expect(downstreamInit?.duplex).toBe("half");
     await expect(request.text()).resolves.toBe('{"name":"widget"}');
   });
 });
