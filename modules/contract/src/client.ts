@@ -8,6 +8,14 @@ export type ContractClientOptions = {
   fetch: typeof fetch;
 };
 
+type RequestWithDuplex = Request & {
+  duplex?: "half";
+};
+
+type RequestInitWithDuplex = RequestInit & {
+  duplex?: "half";
+};
+
 export class ContractClientError extends Error {
   readonly status: number;
   readonly error: HealthError;
@@ -30,7 +38,7 @@ const healthResponseSchema = schemas.HealthResponse;
 const healthErrorSchema = schemas.HealthError;
 
 const toPublicFetchInit = (request: Request): RequestInit => {
-  const init: RequestInit = {
+  const init: RequestInitWithDuplex = {
     body: request.body,
     cache: request.cache,
     credentials: request.credentials,
@@ -45,8 +53,10 @@ const toPublicFetchInit = (request: Request): RequestInit => {
     signal: request.signal,
   };
 
-  if (request.body !== null && "duplex" in request) {
-    init.duplex = request.duplex;
+  const requestWithDuplex = request as RequestWithDuplex;
+
+  if (request.body !== null && requestWithDuplex.duplex !== undefined) {
+    init.duplex = requestWithDuplex.duplex;
   }
 
   return init;
