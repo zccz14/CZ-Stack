@@ -15,23 +15,27 @@ test.describe("web app", () => {
     expect(apiClientSource).not.toContain("createContractClient({ baseUrl:");
   });
 
-  test("preserves base-url path prefixes in the web fetch wrapper", async () => {
-    const { readFile } = await import("node:fs/promises");
-    const apiClientSource = await readFile(`${process.cwd()}/modules/web/src/lib/api-client.ts`, "utf8");
+  test("loads the health status from the contract-driven client via the /api prefix", async ({ page }) => {
+    const requests: string[] = [];
 
-    expect(apiClientSource).toContain("pathname.endsWith(\"/\")");
-    expect(apiClientSource).toContain("url.pathname.startsWith(normalizedBaseUrl.pathname)");
-    expect(apiClientSource).toContain("new URL(`${url.pathname.slice(1)}${url.search}${url.hash}`, normalizedBaseUrl)");
-  });
+    await page.route("**/api/health", async (route) => {
+      requests.push(route.request().url());
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: "ok" }),
+      });
+    });
 
-  test("loads the health status from the contract-driven client", async ({ page }) => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { name: "CZ-Stack Web" })).toBeVisible();
     await expect(page.getByText("API health: ok")).toBeVisible();
+    expect(requests.length).toBeGreaterThan(0);
+    expect(requests.every((requestUrl) => requestUrl.endsWith("/api/health"))).toBe(true);
   });
 
-  test("shows the shared error state when the health request fails", async ({ page }) => {
+  test("shows the shared error state when the /api-prefixed health request fails", async ({ page }) => {
     const requests: string[] = [];
 
     await page.route("**/api/health", async (route) => {
