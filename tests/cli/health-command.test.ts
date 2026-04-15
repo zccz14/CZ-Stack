@@ -103,12 +103,20 @@ describe("cli package baseline", () => {
     expect(commandSource).not.toContain("createContractClient({ baseUrl:");
   });
 
+  it("preserves base-url path prefixes in the CLI fetch wrapper", async () => {
+    const commandSource = await readFile(cliCommandSourceUrl, "utf8");
+
+    expect(commandSource).toContain("pathname.endsWith(\"/\")");
+    expect(commandSource).toContain("url.pathname.startsWith(normalizedBaseUrl.pathname)");
+    expect(commandSource).toContain("new URL(`${url.pathname.slice(1)}${url.search}${url.hash}`, normalizedBaseUrl)");
+  });
+
   it("starts from the oclif entry, honors --base-url, and prints a structured success result", async () => {
     const server = await startHealthServer();
 
     const child = spawn(
       process.execPath,
-      [cliBinUrl.pathname, "health", "--base-url", server.baseUrl],
+      [cliBinUrl.pathname, "health", "--base-url", `${server.baseUrl}/api`],
       {
         cwd: cliRootUrl,
         env: process.env,
@@ -125,7 +133,7 @@ describe("cli package baseline", () => {
     const [exitCode] = (await once(child, "close")) as [number | null];
 
     expect(exitCode).toBe(0);
-    expect(server.requests).toEqual(["/health"]);
+    expect(server.requests).toEqual(["/api/health"]);
     expect(Buffer.concat(stderr).toString("utf8")).toBe("");
     expect(JSON.parse(Buffer.concat(stdout).toString("utf8"))).toEqual({
       ok: true,
