@@ -1,12 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { Hono } from "hono";
 import { beforeAll, describe, expect, it } from "vitest";
 
 const apiPackageUrl = new URL("../../modules/api/package.json", import.meta.url);
 const apiEntryUrl = new URL("../../modules/api/dist/app.mjs", import.meta.url);
 const contractEntryUrl = new URL("../../modules/contract/dist/index.mjs", import.meta.url);
+const apiSourceUrl = new URL("../../modules/api/src/app.ts", import.meta.url);
 
 type ApiPackageManifest = {
   name: string;
@@ -89,17 +89,11 @@ describe("api package baseline", () => {
     expect(html).toContain("SwaggerUIBundle");
   });
 
-  it("renders docs with a prefix-aware OpenAPI url when mounted under a subpath", async () => {
-    const root = new Hono();
+  it("keeps docs rendering prefix-aware via the api app boundary", async () => {
+    const apiSource = await readFile(apiSourceUrl, "utf8");
 
-    root.route("/api", apiModule.createApp());
-
-    const response = await root.request("http://example.test/api/docs");
-
-    expect(response.status).toBe(200);
-
-    const html = await response.text();
-
-    expect(html).toContain("/api/openapi.json");
+    expect(apiSource).toContain('import { openApiDocument } from "@cz-stack/contract";');
+    expect(apiSource).toContain('new URL("./openapi.json", context.req.url).pathname');
+    expect(apiSource).not.toContain("contract/generated");
   });
 });

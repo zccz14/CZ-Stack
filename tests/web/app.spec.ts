@@ -10,6 +10,9 @@ test.describe("web app", () => {
 
     expect(importSpecifiers).toContain("@cz-stack/contract");
     expect(importSpecifiers.some((specifier) => specifier.includes("contract/generated"))).toBe(false);
+    expect(apiClientSource).toContain("createContractClient({");
+    expect(apiClientSource).toContain("fetch: (input, init) =>");
+    expect(apiClientSource).not.toContain("createContractClient({ baseUrl:");
   });
 
   test("loads the health status from the contract-driven client", async ({ page }) => {

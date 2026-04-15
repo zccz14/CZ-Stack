@@ -18,6 +18,14 @@ const fallbackError: HealthError = {
   message: "unexpected error",
 };
 
+const toAbsoluteRequest = (baseUrl: URL, input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+  if (input instanceof Request) {
+    return new Request(new URL(input.url, baseUrl), input);
+  }
+
+  return new Request(new URL(input instanceof URL ? input.href : String(input), baseUrl), init);
+};
+
 export default class HealthCommand extends Command {
   static override description = "Check API health via the shared contract client";
 
@@ -30,7 +38,8 @@ export default class HealthCommand extends Command {
 
   public async run(): Promise<CliHealthSuccess> {
     const { flags } = await this.parse(HealthCommand);
-    const client = createContractClient({ baseUrl: flags["base-url"] });
+    const resolvedBaseUrl = new URL(flags["base-url"]);
+    const client = createContractClient({ fetch: (input, init) => fetch(toAbsoluteRequest(resolvedBaseUrl, input, init)) });
 
     try {
       const response = await client.getHealth();

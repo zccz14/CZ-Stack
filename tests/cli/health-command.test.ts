@@ -99,6 +99,8 @@ describe("cli package baseline", () => {
 
     expect(importSpecifiers).toContain("@cz-stack/contract");
     expect(importSpecifiers.some((specifier) => specifier.includes("contract/generated"))).toBe(false);
+    expect(commandSource).toContain("createContractClient({ fetch:");
+    expect(commandSource).not.toContain("createContractClient({ baseUrl:");
   });
 
   it("starts from the oclif entry, honors --base-url, and prints a structured success result", async () => {

@@ -24,9 +24,19 @@ const resolveApiBaseUrl = () => {
   return "/api";
 };
 
+const toAbsoluteRequest = (baseUrl: URL, input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+  if (input instanceof Request) {
+    return new Request(new URL(input.url, baseUrl), input);
+  }
+
+  return new Request(new URL(input instanceof URL ? input.href : String(input), baseUrl), init);
+};
+
 export const createWebApiClient = (baseUrl = resolveApiBaseUrl()) => {
-  const resolvedBaseUrl = new URL(baseUrl, window.location.origin).toString();
-  const contractClient = createContractClient({ baseUrl: resolvedBaseUrl });
+  const resolvedBaseUrl = new URL(baseUrl, window.location.origin);
+  const contractClient = createContractClient({
+    fetch: (input, init) => fetch(toAbsoluteRequest(resolvedBaseUrl, input, init)),
+  });
 
   return {
     async getHealth(): Promise<WebHealthResult> {
