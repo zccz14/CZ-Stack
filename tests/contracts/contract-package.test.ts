@@ -2,6 +2,7 @@ import { access, readFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { adaptGeneratedRequestForPublicFetch } from "../../modules/contract/src/client.js";
 
 const contractPackageUrl = new URL("../../modules/contract/package.json", import.meta.url);
 const contractEntryUrl = new URL("../../modules/contract/dist/index.mjs", import.meta.url);
@@ -185,5 +186,23 @@ describe("contract package baseline", () => {
 
     expect(getRequestedPath(input)).toBe(contractModule.healthPath);
     expect(request?.method ?? "GET").toBe("GET");
+  });
+
+  it("adapts body-bearing generated requests to a relative-path fetch input without losing request semantics", async () => {
+    const sourceRequest = new Request("http://contract.internal/widgets?draft=true", {
+      body: JSON.stringify({ name: "widget" }),
+      duplex: "half",
+      headers: {
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+
+    const [input, init] = adaptGeneratedRequestForPublicFetch(sourceRequest);
+    const request = input instanceof Request ? input : new Request(input, init);
+
+    expect(input instanceof Request ? input.url : String(input)).toBe("/widgets?draft=true");
+    expect(request.method).toBe("POST");
+    await expect(request.text()).resolves.toBe('{"name":"widget"}');
   });
 });
