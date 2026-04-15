@@ -32,7 +32,7 @@ contract-package (OpenAPI + Zod)
 - API 文档 UI：`modules/api` 启动后访问 `/docs`
 - 仓库导航入口：[`../../README.md`](../../README.md) 与 [`../architecture/validation.md`](../architecture/validation.md)
 
-如果需要本地查看渲染结果，可先运行 `pnpm --filter ./modules/api dev`，再访问 `http://localhost:3000/docs`；其底层文档数据应来自同一服务暴露的 `/openapi.json`。
+如果需要本地查看渲染结果，可先运行 `PORT=3100 pnpm --filter ./modules/api run dev`，再访问 `http://localhost:3100/docs`；其底层文档数据应来自同一服务暴露的 `/openapi.json`。
 
 ## 为什么不维护第二份手写规范
 
