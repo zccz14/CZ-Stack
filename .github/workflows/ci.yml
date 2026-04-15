@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  quality:
+    name: Quality gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-node-pnpm
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit and integration tests
+        run: pnpm test:unit && pnpm test:integration
+
+      - name: Build
+        run: pnpm build
+
+      - name: Verify OpenAPI baseline
+        run: pnpm openapi:check
+
+      - name: Validate changeset policy for releaseable packages
+        run: pnpm changeset:check
+
+      - name: CLI smoke
+        run: pnpm smoke:cli
+
+  playwright:
+    name: Playwright
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup workspace with Playwright
+        uses: ./.github/actions/setup-node-pnpm
+        with:
+          install-playwright: "true"
+
+      - name: Run Playwright suite
+        run: pnpm test:e2e
