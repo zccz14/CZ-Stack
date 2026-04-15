@@ -1,0 +1,38 @@
+{
+  "name": "@cz-stack/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "cz-stack": "bin/dev.js"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "scripts": {
+    "build": "pnpm --dir ../.. exec tsdown --config tsdown.config.ts --entry modules/cli/src/index.ts --out-dir modules/cli/dist",
+    "typecheck": "pnpm exec tsc --project tsconfig.json --noEmit",
+    "test": "pnpm run build && pnpm --dir ../.. exec vitest run tests/cli/health-command.test.ts",
+    "smoke": "node --input-type=module --eval \"import {createServer} from 'node:http'; import {once} from 'node:events'; import {spawn} from 'node:child_process'; const server = createServer((request, response) => { response.writeHead(request.url === '/health' ? 200 : 404, {'content-type': 'application/json'}); response.end(JSON.stringify(request.url === '/health' ? {status: 'ok'} : {code: 'UNAVAILABLE', message: 'not found'})); }); server.listen(0, '127.0.0.1'); await once(server, 'listening'); const address = server.address(); if (!address || typeof address === 'string') throw new Error('expected tcp server address'); const child = spawn(process.execPath, ['./bin/dev.js', 'health', '--base-url', 'http://127.0.0.1:' + address.port], {cwd: process.cwd(), stdio: 'inherit'}); const [code] = await once(child, 'close'); server.close(); await once(server, 'close'); process.exit(code ?? 1);\""
+  },
+  "dependencies": {
+    "@cz-stack/contract": "workspace:*",
+    "@oclif/core": "^4.8.0",
+    "@oclif/plugin-help": "^6.2.44",
+    "@oclif/plugin-plugins": "^5.4.61"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6"
+  }
+}
