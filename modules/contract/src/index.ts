@@ -1,21 +1,25 @@
-export {
-  healthErrorCodeSchema,
-  healthErrorSchema,
-  healthPath,
-  healthResponseSchema,
-  healthStatusSchema,
-} from "./schemas/health.js";
-export type {
-  HealthError,
-  HealthErrorCode,
-  HealthResponse,
-  HealthStatus,
-} from "./schemas/health.js";
+import type { infer as Infer } from "zod";
 
-export { ContractClientError, createContractClient } from "./client.js";
-export type { ContractClient, ContractClientOptions, ContractFetch } from "./client.js";
+import { schemas } from "../generated/zod.js";
 
-export { openApiDocument } from "./openapi.js";
+export { healthPath, openApiDocument } from "./openapi.js";
 export type { OpenApiDocument } from "./openapi.js";
 
-// 未来若接入 SDK 生成，可继续围绕本入口聚合同源导出而不打破模块边界。
+export const healthResponseSchema = schemas.HealthResponse;
+export const healthStatusSchema = healthResponseSchema.shape.status;
+export const healthErrorSchema = schemas.HealthError;
+export const healthErrorCodeSchema = healthErrorSchema.shape.code;
+
+export type HealthResponse = Infer<typeof healthResponseSchema>;
+export type HealthStatus = Infer<typeof healthStatusSchema>;
+export type HealthError = Infer<typeof healthErrorSchema>;
+export type HealthErrorCode = Infer<typeof healthErrorCodeSchema>;
+export type HealthResponseSchema = typeof healthResponseSchema;
+export type HealthStatusSchema = typeof healthStatusSchema;
+export type HealthErrorSchema = typeof healthErrorSchema;
+export type HealthErrorCodeSchema = typeof healthErrorCodeSchema;
+export type ParsedHealthResponse = HealthResponse;
+export type ParsedHealthError = HealthError;
+
+export { ContractClientError, createContractClient } from "./client.js";
+export type { ContractClient, ContractClientOptions } from "./client.js";

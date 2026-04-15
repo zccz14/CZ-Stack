@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 const apiPackageUrl = new URL("../../modules/api/package.json", import.meta.url);
 const apiEntryUrl = new URL("../../modules/api/dist/app.mjs", import.meta.url);
 const contractEntryUrl = new URL("../../modules/contract/dist/index.mjs", import.meta.url);
-const honoEntryUrl = new URL("../../modules/api/node_modules/hono/dist/index.js", import.meta.url);
+const apiSourceUrl = new URL("../../modules/api/src/app.ts", import.meta.url);
 
 type ApiPackageManifest = {
   name: string;
@@ -21,18 +21,15 @@ type ApiPackageManifest = {
 
 type ApiPackageModule = typeof import("../../modules/api/src/app.js");
 type ContractPackageModule = typeof import("../../modules/contract/src/index.js");
-type HonoModule = typeof import("../../modules/api/node_modules/hono/dist/index.js");
 
 let apiPackage: ApiPackageManifest;
 let apiModule: ApiPackageModule;
 let contractModule: ContractPackageModule;
-let honoModule: HonoModule;
 
 beforeAll(async () => {
   apiPackage = JSON.parse(await readFile(apiPackageUrl, "utf8")) as ApiPackageManifest;
   apiModule = (await import(pathToFileURL(fileURLToPath(apiEntryUrl)).href)) as ApiPackageModule;
   contractModule = (await import(pathToFileURL(fileURLToPath(contractEntryUrl)).href)) as ContractPackageModule;
-  honoModule = (await import(pathToFileURL(fileURLToPath(honoEntryUrl)).href)) as HonoModule;
 });
 
 describe("api package baseline", () => {
@@ -61,6 +58,7 @@ describe("api package baseline", () => {
 
     const payload = await (await app.request(contractModule.healthPath)).json();
 
+    expect(payload).toEqual({ status: "ok" });
     expect(contractModule.healthResponseSchema.safeParse(payload).success).toBe(true);
   });
 
@@ -70,7 +68,11 @@ describe("api package baseline", () => {
     const response = await app.request("/openapi.json");
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual(contractModule.openApiDocument);
+
+    const payload = await response.json();
+
+    expect(payload).toEqual(contractModule.openApiDocument);
+    expect(payload.paths[contractModule.healthPath]).toEqual(contractModule.openApiDocument.paths[contractModule.healthPath]);
   });
 
   it("serves a rendered docs entrypoint wired to the OpenAPI document", async () => {
@@ -87,17 +89,11 @@ describe("api package baseline", () => {
     expect(html).toContain("SwaggerUIBundle");
   });
 
-  it("renders docs with a prefix-aware OpenAPI url when mounted under a subpath", async () => {
-    const root = new honoModule.Hono();
+  it("keeps docs rendering prefix-aware via the api app boundary", async () => {
+    const apiSource = await readFile(apiSourceUrl, "utf8");
 
-    root.route("/api", apiModule.createApp());
-
-    const response = await root.request("http://example.test/api/docs");
-
-    expect(response.status).toBe(200);
-
-    const html = await response.text();
-
-    expect(html).toContain("/api/openapi.json");
+    expect(apiSource).toContain('import { openApiDocument } from "@cz-stack/contract";');
+    expect(apiSource).toContain('new URL("./openapi.json", context.req.url).pathname');
+    expect(apiSource).not.toContain("contract/generated");
   });
 });

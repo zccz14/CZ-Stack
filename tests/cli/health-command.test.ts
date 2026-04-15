@@ -9,8 +9,11 @@ const repoRoot = new URL("../../", import.meta.url);
 const cliPackageUrl = new URL("../../modules/cli/package.json", import.meta.url);
 const cliBinUrl = new URL("../../modules/cli/bin/dev.js", import.meta.url);
 const cliRootUrl = new URL("../../modules/cli/", import.meta.url);
+const cliCommandSourceUrl = new URL("../../modules/cli/src/commands/health.ts", import.meta.url);
 
 const runningServers = new Set<ReturnType<typeof createServer>>();
+
+const getImportSpecifiers = (source: string) => [...source.matchAll(/from\s+["']([^"']+)["']/g)].map(([, specifier]) => specifier);
 
 afterEach(async () => {
   await Promise.all(
@@ -27,7 +30,7 @@ const startHealthServer = async () => {
   const server = createServer((request, response) => {
     requests.push(request.url ?? "");
 
-    if (request.url === "/health") {
+    if (request.url === "/health" || request.url === "/api/health") {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify({ status: "ok" }));
       return;
@@ -90,12 +93,22 @@ describe("cli package baseline", () => {
     expect(binSource).not.toContain("tsx");
   });
 
+  it("keeps the CLI on the contract root boundary", async () => {
+    const commandSource = await readFile(cliCommandSourceUrl, "utf8");
+    const importSpecifiers = getImportSpecifiers(commandSource);
+
+    expect(importSpecifiers).toContain("@cz-stack/contract");
+    expect(importSpecifiers.some((specifier) => specifier.includes("contract/generated"))).toBe(false);
+    expect(commandSource).toContain("createContractClient({ fetch:");
+    expect(commandSource).not.toContain("createContractClient({ baseUrl:");
+  });
+
   it("starts from the oclif entry, honors --base-url, and prints a structured success result", async () => {
     const server = await startHealthServer();
 
     const child = spawn(
       process.execPath,
-      [cliBinUrl.pathname, "health", "--base-url", server.baseUrl],
+      [cliBinUrl.pathname, "health", "--base-url", `${server.baseUrl}/api`],
       {
         cwd: cliRootUrl,
         env: process.env,
@@ -112,7 +125,7 @@ describe("cli package baseline", () => {
     const [exitCode] = (await once(child, "close")) as [number | null];
 
     expect(exitCode).toBe(0);
-    expect(server.requests).toEqual(["/health"]);
+    expect(server.requests).toEqual(["/api/health"]);
     expect(Buffer.concat(stderr).toString("utf8")).toBe("");
     expect(JSON.parse(Buffer.concat(stdout).toString("utf8"))).toEqual({
       ok: true,
