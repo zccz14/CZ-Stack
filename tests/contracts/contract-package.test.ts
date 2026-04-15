@@ -29,10 +29,12 @@ type ContractPackageModule = typeof import("../../modules/contract/src/index.js"
 let contractPackage: ContractPackageManifest;
 let rootPackage: RootPackageManifest;
 let contractModule: ContractPackageModule;
+let playwrightConfigSource: string;
 
 beforeAll(async () => {
   contractPackage = JSON.parse(await readFile(contractPackageUrl, "utf8")) as ContractPackageManifest;
   rootPackage = JSON.parse(await readFile(rootPackageUrl, "utf8")) as RootPackageManifest;
+  playwrightConfigSource = await readFile(playwrightConfigUrl, "utf8");
   contractModule = (await import(pathToFileURL(fileURLToPath(contractEntryUrl)).href)) as ContractPackageModule;
 });
 
@@ -42,10 +44,16 @@ describe("contract package baseline", () => {
     await expect(access(playwrightConfigUrl)).resolves.toBeUndefined();
     expect(rootPackage.scripts).toMatchObject({
       "test:unit": expect.any(String),
+      "test:integration": expect.any(String),
       "test:e2e": expect.any(String),
       "smoke:cli": expect.any(String),
       validate: expect.stringContaining("pnpm test"),
     });
+  });
+
+  it("keeps a minimal browser matrix in the Playwright baseline", () => {
+    expect(playwrightConfigSource).toContain('name: "chromium"');
+    expect(playwrightConfigSource).toContain('name: "firefox"');
   });
 
   it("publishes the expected package export contract", () => {
