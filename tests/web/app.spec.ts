@@ -15,6 +15,15 @@ test.describe("web app", () => {
     expect(apiClientSource).not.toContain("createContractClient({ baseUrl:");
   });
 
+  test("preserves base-url path prefixes in the web fetch wrapper", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const apiClientSource = await readFile(`${process.cwd()}/modules/web/src/lib/api-client.ts`, "utf8");
+
+    expect(apiClientSource).toContain("pathname.endsWith(\"/\")");
+    expect(apiClientSource).toContain("url.pathname.startsWith(normalizedBaseUrl.pathname)");
+    expect(apiClientSource).toContain("new URL(`${url.pathname.slice(1)}${url.search}${url.hash}`, normalizedBaseUrl)");
+  });
+
   test("loads the health status from the contract-driven client", async ({ page }) => {
     await page.goto("/");
 
