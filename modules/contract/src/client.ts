@@ -29,27 +29,41 @@ const generatedBaseOrigin = new URL(generatedBaseUrl).origin;
 const healthResponseSchema = schemas.HealthResponse;
 const healthErrorSchema = schemas.HealthError;
 
-const rewriteRequestUrl = (request: Request, url: string) => {
-  Object.defineProperty(request, "url", {
-    configurable: true,
-    value: url,
-  });
+const toPublicFetchInit = (request: Request): RequestInit => {
+  const init: RequestInit = {
+    body: request.body,
+    cache: request.cache,
+    credentials: request.credentials,
+    headers: request.headers,
+    integrity: request.integrity,
+    keepalive: request.keepalive,
+    method: request.method,
+    mode: request.mode,
+    redirect: request.redirect,
+    referrer: request.referrer,
+    referrerPolicy: request.referrerPolicy,
+    signal: request.signal,
+  };
 
-  return request;
+  if (request.body !== null && "duplex" in request) {
+    init.duplex = request.duplex;
+  }
+
+  return init;
 };
 
 export const adaptGeneratedRequestForPublicFetch = (
   input: Parameters<typeof fetch>[0],
   init?: Parameters<typeof fetch>[1],
 ): [Parameters<typeof fetch>[0], Parameters<typeof fetch>[1]?] => {
-  const request = input instanceof Request ? input : new Request(input, init);
+  const request = input instanceof Request ? input.clone() : new Request(input, init);
   const url = new URL(request.url);
 
   if (url.origin !== generatedBaseOrigin) {
     return [input, init];
   }
 
-  return [rewriteRequestUrl(request.clone(), `${url.pathname}${url.search}${url.hash}`)];
+  return [`${url.pathname}${url.search}${url.hash}`, toPublicFetchInit(request)];
 };
 
 export const createContractClient = ({ fetch: fetchImpl }: ContractClientOptions): ContractClient => {
