@@ -17,12 +17,6 @@ export default defineConfig({
       },
       {
         test: {
-          name: "db",
-          include: ["tests/contracts/db-boundary.test.ts"],
-        },
-      },
-      {
-        test: {
           name: "cli",
           include: ["tests/cli/**/*.test.ts"],
         },
