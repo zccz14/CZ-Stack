@@ -5,6 +5,9 @@ test.describe("web app", () => {
     const { readFile } = await import("node:fs/promises");
     const apiClientSource = await readFile(`${process.cwd()}/modules/web/src/lib/api-client.ts`, "utf8");
 
+    expect(apiClientSource).toContain('from "@cz-stack/contract"');
+    expect(apiClientSource).not.toContain('from "@cz-stack/contract/generated/');
+    expect(apiClientSource).not.toContain("modules/contract/generated/");
     expect(apiClientSource).toContain("createContractClient({");
     expect(apiClientSource).toContain("fetch:");
     expect(apiClientSource).not.toContain("baseUrl:");

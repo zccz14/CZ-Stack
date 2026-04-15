@@ -94,6 +94,9 @@ describe("cli package baseline", () => {
   it("keeps base-url ownership in the CLI fetch wrapper", async () => {
     const commandSource = await readFile(cliCommandSourceUrl, "utf8");
 
+    expect(commandSource).toContain('from "@cz-stack/contract"');
+    expect(commandSource).not.toContain('from "@cz-stack/contract/generated/');
+    expect(commandSource).not.toContain("modules/contract/generated/");
     expect(commandSource).toContain("createContractClient({");
     expect(commandSource).toContain("fetch:");
     expect(commandSource).not.toContain("baseUrl:");
