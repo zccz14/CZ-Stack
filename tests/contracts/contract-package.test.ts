@@ -105,8 +105,9 @@ describe("contract package baseline", () => {
   });
 
   it("moves contract package inputs to the OpenAPI generation pipeline", async () => {
+    expect(rootPackage.scripts["openapi:generate"]).toBeDefined();
     expect(rootPackage.scripts["openapi:generate"]).toContain("modules/contract");
-    expect(contractPackage.scripts?.generate).toBeTruthy();
+    expect(contractPackage.scripts?.generate).toBeDefined();
     await expect(readFile(generatedTypesUrl, "utf8")).resolves.toContain("health");
     await expect(readFile(generatedClientUrl, "utf8")).resolves.toContain("health");
     await expect(readFile(generatedZodUrl, "utf8")).resolves.toContain("health");
