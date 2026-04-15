@@ -4,7 +4,7 @@
 
 **Goal:** 构建 CZ-Stack 首版模板基线，使 Web、API、CLI 围绕共享 contract、统一 TypeScript 工具链、分层测试、release-aware CI 与文档入口协同工作。
 
-**Architecture:** 以 pnpm workspace monorepo 为骨架，使用“模块角色优先、物理目录名可变”的组织约定，将 contract 作为单一协议事实源，API/Web/CLI 作为消费者接入。数据库层仅定义 SQLite-first 的 adapter 边界与默认实现占位，测试、构建、发布与文档围绕同一基线集中治理，模块按需局部覆盖。
+**Architecture:** 以 pnpm workspace monorepo 为骨架，使用“模块角色优先、物理目录名可变”的组织约定，将 contract 作为单一协议事实源，API/Web/CLI 作为消费者接入。数据库能力采用后端服务内的 SQLite-first 默认落地姿态，测试、构建、发布与文档围绕同一基线集中治理，模块按需局部覆盖。
 
 **Tech Stack:** pnpm workspace、TypeScript、Biome、tsdown、Hono、Vite、React、Zod、OpenAPI、oclif、Vitest、Playwright、Changesets、GitHub Actions。
 
@@ -24,7 +24,6 @@
 - Create: `modules/api/package.json`、`modules/api/src/app.ts`、`modules/api/src/routes/health.ts`、`modules/api/src/server.ts` — Hono API 服务与 contract 绑定。
 - Create: `modules/web/package.json`、`modules/web/src/main.tsx`、`modules/web/src/app.tsx`、`modules/web/src/lib/api-client.ts` — Vite + React Web 应用与 contract-driven client。
 - Create: `modules/cli/package.json`、`modules/cli/src/index.ts`、`modules/cli/src/commands/health.ts` — oclif CLI 基线与共享客户端接入。
-- Create: `modules/db/package.json`、`modules/db/src/index.ts`、`modules/db/src/boundary.ts`、`modules/db/src/sqlite-adapter.ts` — SQLite-first, adapter-friendly 数据边界。
 - Create: `modules/tooling/*`（按需）— 封装共享脚本、配置 helper 或生成命令。
 - Create: `tests/contracts/*.test.ts`、`tests/api/*.test.ts`、`tests/web/*.spec.ts`、`tests/cli/*.test.ts` — contract/API/Web/CLI 验证面。
 
@@ -72,7 +71,7 @@
 - Create: `docs/api/README.md`
 
 - [ ] Step 1: 改写 `README.md`，说明模板定位、快速开始、模块角色概览、验证入口与“Balanced core + optional modules”原则。
-- [ ] Step 2: 新建 `docs/architecture/module-roles.md`，定义 `contract-package`、`api-service`、`web-app`、`cli-tool`、`db-adapter`、`tooling-package`、`docs-site` 的职责、依赖方向与禁止反向依赖规则。
+- [ ] Step 2: 新建 `docs/architecture/module-roles.md`，定义 `contract-package`、`api-service`、`web-app`、`cli-tool`、`tooling-package`、`docs-site` 的职责、依赖方向与禁止反向依赖规则。
 - [ ] Step 3: 新建 `docs/architecture/repo-conventions.md`，明确“模块角色优先，不要求固定 `apps/`/`packages/`/`services/` 目录名”，并记录首版为何选择 `modules/` 作为示例物理容器。
 - [ ] Step 4: 新建 `docs/api/README.md`，定义 API 文档展示入口如何从 contract 同源生成，而不是维护第二份手写规范。
 - [ ] Step 5: 运行 `pnpm lint README.md docs` 或等价仓库命令，确保文档引用、命令与路径一致。
@@ -157,25 +156,7 @@
 - [ ] Step 5: 运行 `pnpm --filter ./modules/cli test`、`pnpm --filter ./modules/cli smoke`。
 - [ ] Step 6: 提交 CLI 基线 commit。
 
-### Task 7: 建立 SQLite-first db boundary（不绑定 ORM）
-
-**Files:**
-- Create: `modules/db/package.json`
-- Create: `modules/db/tsconfig.json`
-- Create: `modules/db/src/index.ts`
-- Create: `modules/db/src/boundary.ts`
-- Create: `modules/db/src/sqlite-adapter.ts`
-- Test: `tests/contracts/db-boundary.test.ts`
-
-- [ ] Step 1: 创建 `modules/db` 包配置，声明这是数据访问边界包，不暴露 ORM 绑定假设。
-- [ ] Step 2: 在 `src/boundary.ts` 定义 repository / adapter 接口、连接配置与最小事务/查询抽象。
-- [ ] Step 3: 在 `src/sqlite-adapter.ts` 提供 SQLite-first 默认适配实现占位，可使用轻量驱动，但不要把 ORM 或 migration 工具耦合进接口层。
-- [ ] Step 4: 在 `src/index.ts` 导出 boundary 与默认 adapter 工厂，供 API 服务后续注入。
-- [ ] Step 5: 编写 `tests/contracts/db-boundary.test.ts`，验证边界契约可替换，SQLite 默认实现满足最小读写接口。
-- [ ] Step 6: 运行 `pnpm --filter ./modules/db test`、`pnpm --filter ./modules/db build`。
-- [ ] Step 7: 提交 DB boundary commit。
-
-### Task 8: 建立 Vitest / Playwright / CLI smoke 测试基线
+### Task 7: 建立 Vitest / Playwright / CLI smoke 测试基线
 
 **Files:**
 - Create: `vitest.workspace.ts`
@@ -186,14 +167,14 @@
 - Modify: `tests/web/app.spec.ts`
 - Modify: `tests/cli/health-command.test.ts`
 
-- [ ] Step 1: 写入 `vitest.workspace.ts`，将 contract、api、db、cli 等测试组织为可独立过滤的 workspace project。
+- [ ] Step 1: 写入 `vitest.workspace.ts`，将 contract、api、cli、repo 等测试组织为可独立过滤的 workspace project。
 - [ ] Step 2: 写入 `playwright.config.ts`，定义 Web app dev server 与基础浏览器矩阵；保持首版仅跑主路径测试。
 - [ ] Step 3: 在根 `package.json` 补齐 `test:unit`、`test:e2e`、`smoke:cli`、`validate` 组合命令。
 - [ ] Step 4: 校准各测试文件命名、脚本与 fixture 位置，使 `pnpm test` 在冷启动仓库可一键执行。
 - [ ] Step 5: 运行 `pnpm test`、`pnpm smoke`，记录预期输出（Vitest 全绿、Playwright 通过、CLI smoke 返回 0）。
 - [ ] Step 6: 提交测试基线 commit。
 
-### Task 9: 建立 Changesets 与 release-aware CI
+### Task 8: 建立 Changesets 与 release-aware CI
 
 **Files:**
 - Create: `.changeset/config.json`
@@ -211,7 +192,7 @@
 - [ ] Step 6: 运行 `pnpm changeset status`、`pnpm release:check`，并通过本地 YAML 校验或最小 GitHub Actions lint 工具验证 workflow 语法。
 - [ ] Step 7: 提交 CI / release commit。
 
-### Task 10: 收口文档入口、架构说明与实现验证说明
+### Task 9: 收口文档入口、架构说明与实现验证说明
 
 **Files:**
 - Modify: `README.md`
@@ -221,7 +202,7 @@
 - Create: `docs/architecture/validation.md`
 
 - [ ] Step 1: 在 `README.md` 增加快速验证命令、模块入口链接与首版模板包含/不包含能力清单。
-- [ ] Step 2: 在 `docs/architecture/*.md` 标注 contract 中心、依赖方向、SQLite-first 边界、可选 SDK 生成与非目标约束。
+- [ ] Step 2: 在 `docs/architecture/*.md` 标注 contract 中心、依赖方向、后端服务内的 SQLite-first 默认落地姿态、可选 SDK 生成与非目标约束。
 - [ ] Step 3: 新建 `docs/architecture/validation.md`，列出本模板实现完成后必须通过的命令、预期结果与失败排查起点。
 - [ ] Step 4: 运行 `pnpm lint` 与所有文档链接检查命令（若仓库无专用工具，则至少执行 Markdown 链接/路径自检）。
 - [ ] Step 5: 提交文档收口 commit。
@@ -234,7 +215,7 @@
 - `pnpm test` → Vitest 全部通过。
 - `pnpm playwright test` → Web 主路径通过。
 - `pnpm smoke` → CLI smoke 返回 0，输出 health 成功结果。
-- `pnpm build` → contract / api / cli / db 等构建通过，web 产出 Vite 构建结果。
+- `pnpm build` → contract / api / cli 等构建通过，web 产出 Vite 构建结果。
 - `pnpm changeset status` → changeset 状态输出符合当前版本流程预期。
 - `pnpm release:check` → 发布前检查通过。
 
@@ -246,10 +227,9 @@
 4. `feat: add hono api baseline`
 5. `feat: add web app baseline`
 6. `feat: add cli baseline`
-7. `feat: add db boundary baseline`
-8. `test: add unified validation baseline`
-9. `ci: add release-aware workflows`
-10. `docs: add validation entrypoints`
+7. `test: add unified validation baseline`
+8. `ci: add release-aware workflows`
+9. `docs: add validation entrypoints`
 
 ## 自检结果（已按 spec 逐项补齐）
 
@@ -257,7 +237,7 @@
 - [x] 已覆盖模块角色导向约定，并明确不把 `modules/` 视为唯一固定目录结构。
 - [x] 已覆盖 contract package、OpenAPI + Zod、typed client 与文档入口同源。
 - [x] 已覆盖 Hono API、Vite + React Web、oclif CLI 对共享 contract 的接入。
-- [x] 已覆盖 SQLite-first adapter boundary，且未绑定 ORM。
+- [x] 已覆盖后端服务内的 SQLite-first 默认落地姿态，且未引入额外共享数据库抽象层。
 - [x] 已覆盖 Vitest、Playwright、CLI smoke、Changesets、release-aware CI。
 - [x] 已覆盖 README、架构文档、API 文档入口与验证命令。
 - [x] 已扫描并移除占位性表述；所有步骤均给出明确文件路径与执行命令。

@@ -32,18 +32,17 @@
 
 ### `pnpm test`
 
-- 目的：执行 contract / api / db / cli / web 的统一测试链路。
+- 目的：执行 contract / api / cli / web 的统一测试链路。
 - 预期结果：Vitest workspace 与 Playwright 主路径全部通过。
 - 失败先看：
   - contract 失败：`modules/contract/src/*` 的 schema、OpenAPI 或 client 导出。
   - api 失败：`modules/api/src/app.ts`、`modules/api/src/routes/health.ts` 与 `/openapi.json` / `/docs` 行为。
-  - db 失败：`modules/db/src/boundary.ts`、`modules/db/src/sqlite-adapter.ts` 的边界契约。
   - cli 失败：`modules/cli/src/commands/health.ts` 与共享 client 使用方式。
   - web / Playwright 失败：`modules/web/src/*`、测试启动依赖与 contract-driven client 交互。
 
 ### `pnpm build`
 
-- 目的：确认 contract / api / cli / db 构建与 web 产物生成仍可完成。
+- 目的：确认 contract / api / cli 构建与 web 产物生成仍可完成。
 - 预期结果：所有带 `build` 脚本的模块退出码为 0。
 - 失败先看：`tsdown` 入口、Vite 配置、包 `exports` 与 dist 目标路径是否一致。
 
@@ -79,6 +78,6 @@
 出现以下情况时，应停止局部修补并升级决策：
 
 - 需要让 `contract` 反向依赖 API / Web / CLI 才能通过验证。
-- 需要把 SQLite-first 边界改为 ORM 绑定实现才能维持现有测试。
+- 需要新增新的共享数据库抽象层才能维持现有测试或文档叙述。
 - 需要新增第二份 API 规范、手写 SDK 或 docs 事实源才能解释当前行为。
 - 文档要描述的仓库现实已经超出当前 spec / plan 的批准范围。
