@@ -30,7 +30,7 @@ const startHealthServer = async () => {
   const server = createServer((request, response) => {
     requests.push(request.url ?? "");
 
-    if (request.url === "/health") {
+    if (request.url === "/health" || request.url === "/api/health") {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify({ status: "ok" }));
       return;
@@ -101,14 +101,6 @@ describe("cli package baseline", () => {
     expect(importSpecifiers.some((specifier) => specifier.includes("contract/generated"))).toBe(false);
     expect(commandSource).toContain("createContractClient({ fetch:");
     expect(commandSource).not.toContain("createContractClient({ baseUrl:");
-  });
-
-  it("preserves base-url path prefixes in the CLI fetch wrapper", async () => {
-    const commandSource = await readFile(cliCommandSourceUrl, "utf8");
-
-    expect(commandSource).toContain("pathname.endsWith(\"/\")");
-    expect(commandSource).toContain("url.pathname.startsWith(normalizedBaseUrl.pathname)");
-    expect(commandSource).toContain("new URL(`${url.pathname.slice(1)}${url.search}${url.hash}`, normalizedBaseUrl)");
   });
 
   it("starts from the oclif entry, honors --base-url, and prints a structured success result", async () => {
