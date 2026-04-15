@@ -32,8 +32,8 @@ jobs:
       - name: Verify OpenAPI baseline
         run: pnpm openapi:check
 
-      - name: Validate changesets metadata
-        run: pnpm changeset status
+      - name: Validate changeset policy for releaseable packages
+        run: pnpm changeset:check
 
       - name: CLI smoke
         run: pnpm smoke:cli

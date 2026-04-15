@@ -32,8 +32,16 @@ jobs:
         id: detect
         shell: bash
         run: |
-          pnpm exec changeset status --output=.changeset/status.json
-          node --input-type=module --eval "import { readFileSync } from 'node:fs'; const status = JSON.parse(readFileSync('.changeset/status.json', 'utf8')); process.stdout.write('has_changesets=' + (status.releases.length > 0 ? '1' : '0') + '\n');" >> "$GITHUB_OUTPUT"
+          shopt -s nullglob
+          files=(.changeset/*.md)
+          pending=0
+          for file in "${files[@]}"; do
+            if [[ "$file" != ".changeset/README.md" ]]; then
+              pending=1
+              break
+            fi
+          done
+          echo "has_changesets=$pending" >> "$GITHUB_OUTPUT"
 
   version-or-prepare-release:
     name: Version PR / release prep
