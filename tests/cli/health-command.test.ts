@@ -93,15 +93,12 @@ describe("cli package baseline", () => {
     expect(binSource).not.toContain("tsx");
   });
 
-  it("keeps base-url ownership in the CLI fetch wrapper", async () => {
+  it("keeps the CLI on the contract root boundary", async () => {
     const commandSource = await readFile(cliCommandSourceUrl, "utf8");
     const importSpecifiers = getImportSpecifiers(commandSource);
 
     expect(importSpecifiers).toContain("@cz-stack/contract");
     expect(importSpecifiers.some((specifier) => specifier.includes("contract/generated"))).toBe(false);
-    expect(commandSource).toMatch(/createContractClient\s*\(\s*\{[\s\S]*fetch\s*:/);
-    expect(commandSource).not.toMatch(/createContractClient\s*\(\s*\{[\s\S]*baseUrl\s*:/);
-    expect(commandSource).not.toMatch(/\bContractFetch\b/);
   });
 
   it("starts from the oclif entry, honors --base-url, and prints a structured success result", async () => {

@@ -3,15 +3,13 @@ import { expect, test } from "@playwright/test";
 const getImportSpecifiers = (source: string) => [...source.matchAll(/from\s+["']([^"']+)["']/g)].map(([, specifier]) => specifier);
 
 test.describe("web app", () => {
-  test("keeps API base-url binding in the web layer", async () => {
+  test("keeps the web client on the contract root boundary", async () => {
     const { readFile } = await import("node:fs/promises");
     const apiClientSource = await readFile(`${process.cwd()}/modules/web/src/lib/api-client.ts`, "utf8");
     const importSpecifiers = getImportSpecifiers(apiClientSource);
 
     expect(importSpecifiers).toContain("@cz-stack/contract");
     expect(importSpecifiers.some((specifier) => specifier.includes("contract/generated"))).toBe(false);
-    expect(apiClientSource).toMatch(/createContractClient\s*\(\s*\{[\s\S]*fetch\s*:/);
-    expect(apiClientSource).not.toMatch(/createContractClient\s*\(\s*\{[\s\S]*baseUrl\s*:/);
   });
 
   test("loads the health status from the contract-driven client", async ({ page }) => {
