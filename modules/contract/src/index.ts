@@ -2,9 +2,8 @@ import type { infer as Infer } from "zod";
 
 import { schemas } from "../generated/zod.js";
 
-export { healthPath, openApiDocument } from "./openapi.js";
 export type { OpenApiDocument } from "./openapi.js";
-
+export { healthPath, openApiDocument } from "./openapi.js";
 export const healthResponseSchema = schemas.HealthResponse;
 export const healthStatusSchema = healthResponseSchema.shape.status;
 export const healthErrorSchema = schemas.HealthError;
@@ -21,5 +20,5 @@ export type HealthErrorCodeSchema = typeof healthErrorCodeSchema;
 export type ParsedHealthResponse = HealthResponse;
 export type ParsedHealthError = HealthError;
 
-export { ContractClientError, createContractClient } from "./client.js";
 export type { ContractClient, ContractClientOptions } from "./client.js";
+export { ContractClientError, createContractClient } from "./client.js";

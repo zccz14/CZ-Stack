@@ -4,6 +4,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { adaptGeneratedRequestForPublicFetch } from "../src/client.js";
 
+type RequestInitWithDuplex = RequestInit & {
+  duplex?: "half";
+};
+
 const contractPackageUrl = new URL("../package.json", import.meta.url);
 const contractEntryUrl = new URL("../dist/index.mjs", import.meta.url);
 const contractOpenApiSourceUrl = new URL("../src/openapi.ts", import.meta.url);
@@ -12,8 +16,14 @@ const generatedClientUrl = new URL("../generated/client.ts", import.meta.url);
 const generatedTypesUrl = new URL("../generated/types.ts", import.meta.url);
 const generatedZodUrl = new URL("../generated/zod.ts", import.meta.url);
 const rootPackageUrl = new URL("../../../package.json", import.meta.url);
-const vitestWorkspaceUrl = new URL("../../../vitest.workspace.ts", import.meta.url);
-const playwrightConfigUrl = new URL("../../../playwright.config.ts", import.meta.url);
+const vitestWorkspaceUrl = new URL(
+  "../../../vitest.workspace.ts",
+  import.meta.url,
+);
+const playwrightConfigUrl = new URL(
+  "../../../playwright.config.ts",
+  import.meta.url,
+);
 
 type ContractPackageManifest = {
   name: string;
@@ -41,10 +51,16 @@ let contractModule: ContractPackageModule;
 let playwrightConfigSource: string;
 
 beforeAll(async () => {
-  contractPackage = JSON.parse(await readFile(contractPackageUrl, "utf8")) as ContractPackageManifest;
-  rootPackage = JSON.parse(await readFile(rootPackageUrl, "utf8")) as RootPackageManifest;
+  contractPackage = JSON.parse(
+    await readFile(contractPackageUrl, "utf8"),
+  ) as ContractPackageManifest;
+  rootPackage = JSON.parse(
+    await readFile(rootPackageUrl, "utf8"),
+  ) as RootPackageManifest;
   playwrightConfigSource = await readFile(playwrightConfigUrl, "utf8");
-  contractModule = (await import(pathToFileURL(fileURLToPath(contractEntryUrl)).href)) as ContractPackageModule;
+  contractModule = (await import(
+    pathToFileURL(fileURLToPath(contractEntryUrl)).href
+  )) as ContractPackageModule;
 });
 
 describe("contract package baseline", () => {
@@ -82,27 +98,47 @@ describe("contract package baseline", () => {
       "healthStatusSchema",
       "openApiDocument",
     ]);
-    expect(contractModule.openApiDocument.paths[contractModule.healthPath]).toBeDefined();
+    expect(
+      contractModule.openApiDocument.paths[contractModule.healthPath],
+    ).toBeDefined();
   });
 
   it("exports health schemas from the built package boundary", () => {
     expect(contractModule.healthPath).toBe("/health");
     expect(contractModule.healthStatusSchema.parse("ok")).toBe("ok");
-    expect(contractModule.healthResponseSchema.parse({ status: "ok" })).toEqual({ status: "ok" });
-    expect(contractModule.healthErrorCodeSchema.parse("UNAVAILABLE")).toBe("UNAVAILABLE");
-    expect(contractModule.healthErrorSchema.parse({ code: "UNAVAILABLE", message: "offline" })).toEqual({
+    expect(contractModule.healthResponseSchema.parse({ status: "ok" })).toEqual(
+      { status: "ok" },
+    );
+    expect(contractModule.healthErrorCodeSchema.parse("UNAVAILABLE")).toBe(
+      "UNAVAILABLE",
+    );
+    expect(
+      contractModule.healthErrorSchema.parse({
+        code: "UNAVAILABLE",
+        message: "offline",
+      }),
+    ).toEqual({
       code: "UNAVAILABLE",
       message: "offline",
     });
   });
 
   it("publishes a minimal health OpenAPI document", () => {
+    const getOperation =
+      contractModule.openApiDocument.paths[contractModule.healthPath]?.get;
+
     expect(contractModule.openApiDocument.openapi).toBe("3.1.0");
-    expect(contractModule.openApiDocument.paths[contractModule.healthPath]?.get?.responses["200"]?.content?.["application/json"]?.schema).toEqual({
+    expect(
+      getOperation?.responses["200"]?.content?.["application/json"]?.schema,
+    ).toEqual({
       $ref: "#/components/schemas/HealthResponse",
     });
-    expect(contractModule.openApiDocument.paths[contractModule.healthPath]?.get?.security).toBeUndefined();
-    expect(contractModule.openApiDocument.components.schemas.HealthError).toMatchObject({
+    expect(
+      (getOperation as { security?: unknown } | undefined)?.security,
+    ).toBeUndefined();
+    expect(
+      contractModule.openApiDocument.components.schemas.HealthError,
+    ).toMatchObject({
       type: "object",
       required: ["code", "message"],
     });
@@ -110,16 +146,26 @@ describe("contract package baseline", () => {
 
   it("moves contract package inputs to the OpenAPI generation pipeline", async () => {
     expect(rootPackage.scripts["openapi:generate"]).toBeDefined();
-    expect(rootPackage.scripts["openapi:generate"]).toContain("modules/contract");
+    expect(rootPackage.scripts["openapi:generate"]).toContain(
+      "modules/contract",
+    );
     expect(rootPackage.scripts["openapi:check"]).toContain("generate:check");
     expect(contractPackage.scripts?.generate).toBeDefined();
     expect(contractPackage.scripts?.build).toContain("pnpm run generate");
     expect(contractPackage.dependencies?.yaml).toBeUndefined();
     expect(contractPackage.devDependencies?.yaml).toBe("^2.8.3");
-    expect(contractPackage.scripts?.["generate:zod"]).not.toContain("node_modules");
-    await expect(readFile(generatedTypesUrl, "utf8")).resolves.toContain("health");
-    await expect(readFile(generatedClientUrl, "utf8")).resolves.toContain("health");
-    await expect(readFile(generatedZodUrl, "utf8")).resolves.toContain("HealthResponse");
+    expect(contractPackage.scripts?.["generate:zod"]).not.toContain(
+      "node_modules",
+    );
+    await expect(readFile(generatedTypesUrl, "utf8")).resolves.toContain(
+      "health",
+    );
+    await expect(readFile(generatedClientUrl, "utf8")).resolves.toContain(
+      "health",
+    );
+    await expect(readFile(generatedZodUrl, "utf8")).resolves.toContain(
+      "HealthResponse",
+    );
   });
 
   it("keeps generated zod artifacts free of undeclared runtime imports", async () => {
@@ -134,7 +180,7 @@ describe("contract package baseline", () => {
       readFile(contractOpenApiSourceUrl, "utf8"),
     ]);
 
-    expect(entrySource).not.toContain("export * from \"../generated");
+    expect(entrySource).not.toContain('export * from "../generated');
     expect(entrySource).not.toContain("GetHealthResponse");
     expect(entrySource).not.toContain("GetHealthError");
     expect(entrySource).not.toContain("ContractFetch");
@@ -145,7 +191,12 @@ describe("contract package baseline", () => {
   });
 
   const getRequestedPath = (input: unknown) => {
-    const target = input instanceof Request ? input.url : input instanceof URL ? input.toString() : String(input);
+    const target =
+      input instanceof Request
+        ? input.url
+        : input instanceof URL
+          ? input.toString()
+          : String(input);
     return new URL(target, "http://contract.test").pathname;
   };
 
@@ -154,7 +205,10 @@ describe("contract package baseline", () => {
       return input.headers.get("accept");
     }
 
-    const headers = init && typeof init === "object" && "headers" in init ? init.headers : undefined;
+    const headers =
+      init && typeof init === "object" && "headers" in init
+        ? init.headers
+        : undefined;
 
     return new Headers(headers as HeadersInit | undefined).get("accept");
   };
@@ -176,7 +230,12 @@ describe("contract package baseline", () => {
 
     const [input, init] = fetcher.mock.calls[0] ?? [];
     const request = input instanceof Request ? input : undefined;
-    const rawTarget = input instanceof Request ? input.url : input instanceof URL ? input.toString() : String(input);
+    const rawTarget =
+      input instanceof Request
+        ? input.url
+        : input instanceof URL
+          ? input.toString()
+          : String(input);
 
     expect(getRequestedPath(input)).toBe(contractModule.healthPath);
     expect(rawTarget).toBe(contractModule.healthPath);
@@ -186,10 +245,13 @@ describe("contract package baseline", () => {
 
   it("throws a typed contract error for non-ok responses through the fetch-only boundary", async () => {
     const fetcher = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ code: "UNAVAILABLE", message: "offline" }), {
-        status: 503,
-        headers: { "content-type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({ code: "UNAVAILABLE", message: "offline" }),
+        {
+          status: 503,
+          headers: { "content-type": "application/json" },
+        },
+      ),
     );
 
     const client = contractModule.createContractClient({
@@ -198,7 +260,9 @@ describe("contract package baseline", () => {
 
     const result = client.getHealth();
 
-    await expect(result).rejects.toBeInstanceOf(contractModule.ContractClientError);
+    await expect(result).rejects.toBeInstanceOf(
+      contractModule.ContractClientError,
+    );
     await expect(result).rejects.toMatchObject({
       status: 503,
       error: { code: "UNAVAILABLE", message: "offline" },
@@ -214,24 +278,36 @@ describe("contract package baseline", () => {
   });
 
   it("adapts body-bearing generated requests to relative fetch args that survive downstream forwarding", async () => {
-    const sourceRequest = new Request("http://contract.internal/widgets?draft=true", {
+    const sourceRequestInit: RequestInitWithDuplex = {
       body: JSON.stringify({ name: "widget" }),
       duplex: "half",
       headers: {
         "content-type": "application/json",
       },
       method: "POST",
-    });
+    };
+    const sourceRequest = new Request(
+      "http://contract.internal/widgets?draft=true",
+      sourceRequestInit,
+    );
 
     const [input, init] = adaptGeneratedRequestForPublicFetch(sourceRequest);
-    const downstreamFetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
-    const callerFetch = (forwardedInput: Parameters<typeof fetch>[0], forwardedInit?: Parameters<typeof fetch>[1]) =>
-      downstreamFetch(forwardedInput, forwardedInit);
+    const downstreamFetch = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    const callerFetch = (
+      forwardedInput: Parameters<typeof fetch>[0],
+      forwardedInit?: Parameters<typeof fetch>[1],
+    ) => downstreamFetch(forwardedInput, forwardedInit);
 
     await callerFetch(input, init);
 
-    const [downstreamInput, downstreamInit] = downstreamFetch.mock.calls[0] ?? [];
-    const request = new Request(new URL(String(downstreamInput), "http://downstream.test"), downstreamInit);
+    const [downstreamInput, downstreamInit] =
+      downstreamFetch.mock.calls[0] ?? [];
+    const request = new Request(
+      new URL(String(downstreamInput), "http://downstream.test"),
+      downstreamInit,
+    );
 
     expect(String(downstreamInput)).toBe("/widgets?draft=true");
     expect(request.method).toBe("POST");

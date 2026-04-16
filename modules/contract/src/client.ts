@@ -1,8 +1,12 @@
-import { getHealth } from "../generated/client.js";
 import { createClient as createGeneratedClient } from "../generated/_client/client/index.js";
-import type { GetHealthError, GetHealthResponse, HealthError, HealthResponse } from "../generated/types.js";
+import { getHealth } from "../generated/client.js";
+import type {
+  GetHealthError,
+  GetHealthResponse,
+  HealthError,
+  HealthResponse,
+} from "../generated/types.js";
 import { schemas } from "../generated/zod.js";
-import { healthPath } from "./openapi.js";
 
 export type ContractClientOptions = {
   fetch: typeof fetch;
@@ -66,17 +70,23 @@ export const adaptGeneratedRequestForPublicFetch = (
   input: Parameters<typeof fetch>[0],
   init?: Parameters<typeof fetch>[1],
 ): [Parameters<typeof fetch>[0], Parameters<typeof fetch>[1]?] => {
-  const request = input instanceof Request ? input.clone() : new Request(input, init);
+  const request =
+    input instanceof Request ? input.clone() : new Request(input, init);
   const url = new URL(request.url);
 
   if (url.origin !== generatedBaseOrigin) {
     return [input, init];
   }
 
-  return [`${url.pathname}${url.search}${url.hash}`, toPublicFetchInit(request)];
+  return [
+    `${url.pathname}${url.search}${url.hash}`,
+    toPublicFetchInit(request),
+  ];
 };
 
-export const createContractClient = ({ fetch: fetchImpl }: ContractClientOptions): ContractClient => {
+export const createContractClient = ({
+  fetch: fetchImpl,
+}: ContractClientOptions): ContractClient => {
   const client = createGeneratedClient({
     baseUrl: generatedBaseUrl,
     fetch: async (input, init) => {
@@ -85,19 +95,24 @@ export const createContractClient = ({ fetch: fetchImpl }: ContractClientOptions
   });
 
   return {
-  async getHealth() {
-    const result = await getHealth({
-      client,
-      headers: {
-        accept: "application/json",
-      },
-    });
+    async getHealth() {
+      const result = await getHealth({
+        client,
+        headers: {
+          accept: "application/json",
+        },
+      });
 
-    if (result.error) {
-      throw new ContractClientError(result.response.status, healthErrorSchema.parse(result.error satisfies GetHealthError));
-    }
+      if (result.error) {
+        throw new ContractClientError(
+          result.response.status,
+          healthErrorSchema.parse(result.error satisfies GetHealthError),
+        );
+      }
 
-    return healthResponseSchema.parse(result.data satisfies GetHealthResponse) satisfies HealthResponse;
-  },
+      return healthResponseSchema.parse(
+        result.data satisfies GetHealthResponse,
+      ) satisfies HealthResponse;
+    },
   };
 };

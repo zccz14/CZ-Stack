@@ -34,19 +34,32 @@ const normalizeBaseUrl = (baseUrl: URL) => {
   return normalizedBaseUrl;
 };
 
-const resolveContractUrl = (baseUrl: URL, input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-  const url = input instanceof Request ? new URL(input.url) : new URL(input instanceof URL ? input.href : String(input), baseUrl);
+const resolveContractUrl = (
+  baseUrl: URL,
+  input: Parameters<typeof fetch>[0],
+) => {
+  const url =
+    input instanceof Request
+      ? new URL(input.url)
+      : new URL(input instanceof URL ? input.href : String(input), baseUrl);
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
   if (url.pathname.startsWith(normalizedBaseUrl.pathname)) {
     return url;
   }
 
-  return new URL(`${url.pathname.slice(1)}${url.search}${url.hash}`, normalizedBaseUrl);
+  return new URL(
+    `${url.pathname.slice(1)}${url.search}${url.hash}`,
+    normalizedBaseUrl,
+  );
 };
 
-const toAbsoluteRequest = (baseUrl: URL, input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-  const resolvedUrl = resolveContractUrl(baseUrl, input, init);
+const toAbsoluteRequest = (
+  baseUrl: URL,
+  input: Parameters<typeof fetch>[0],
+  init?: Parameters<typeof fetch>[1],
+) => {
+  const resolvedUrl = resolveContractUrl(baseUrl, input);
 
   if (input instanceof Request) {
     return new Request(resolvedUrl, input);
@@ -58,7 +71,8 @@ const toAbsoluteRequest = (baseUrl: URL, input: Parameters<typeof fetch>[0], ini
 export const createWebApiClient = (baseUrl = resolveApiBaseUrl()) => {
   const resolvedBaseUrl = new URL(baseUrl, window.location.origin);
   const contractClient = createContractClient({
-    fetch: (input, init) => fetch(toAbsoluteRequest(resolvedBaseUrl, input, init)),
+    fetch: (input, init) =>
+      fetch(toAbsoluteRequest(resolvedBaseUrl, input, init)),
   });
 
   return {

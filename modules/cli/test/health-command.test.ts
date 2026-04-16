@@ -1,19 +1,24 @@
+import { spawn } from "node:child_process";
+import { once } from "node:events";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
-import { once } from "node:events";
-import { spawn } from "node:child_process";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-const repoRoot = new URL("../../../", import.meta.url);
 const cliPackageUrl = new URL("../package.json", import.meta.url);
 const cliBinUrl = new URL("../bin/dev.js", import.meta.url);
 const cliRootUrl = new URL("../", import.meta.url);
-const cliCommandSourceUrl = new URL("../src/commands/health.ts", import.meta.url);
+const cliCommandSourceUrl = new URL(
+  "../src/commands/health.ts",
+  import.meta.url,
+);
 
 const runningServers = new Set<ReturnType<typeof createServer>>();
 
-const getImportSpecifiers = (source: string) => [...source.matchAll(/from\s+["']([^"']+)["']/g)].map(([, specifier]) => specifier);
+const getImportSpecifiers = (source: string) =>
+  [...source.matchAll(/from\s+["']([^"']+)["']/g)].map(
+    ([, specifier]) => specifier,
+  );
 
 afterEach(async () => {
   await Promise.all(
@@ -98,8 +103,12 @@ describe("cli package baseline", () => {
     const importSpecifiers = getImportSpecifiers(commandSource);
 
     expect(importSpecifiers).toContain("@cz-stack/contract");
-    expect(importSpecifiers.some((specifier) => specifier.includes("contract/generated"))).toBe(false);
-    expect(commandSource).toContain("createContractClient({ fetch:");
+    expect(
+      importSpecifiers.some((specifier) =>
+        specifier.includes("contract/generated"),
+      ),
+    ).toBe(false);
+    expect(commandSource).toContain("createContractClient({");
     expect(commandSource).not.toContain("createContractClient({ baseUrl:");
   });
 

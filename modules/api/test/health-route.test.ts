@@ -3,10 +3,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { beforeAll, describe, expect, it } from "vitest";
 
-const apiPackageUrl = new URL(
-  "../package.json",
-  import.meta.url,
-);
+const apiPackageUrl = new URL("../package.json", import.meta.url);
 const apiEntryUrl = new URL("../dist/app.mjs", import.meta.url);
 const contractEntryUrl = new URL(
   "../../contract/dist/index.mjs",
@@ -26,8 +23,7 @@ type ApiPackageManifest = {
 };
 
 type ApiPackageModule = typeof import("../src/app.js");
-type ContractPackageModule =
-  typeof import("../../contract/src/index.js");
+type ContractPackageModule = typeof import("../../contract/src/index.js");
 
 let apiPackage: ApiPackageManifest;
 let apiModule: ApiPackageModule;
