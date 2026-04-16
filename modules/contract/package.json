@@ -27,7 +27,7 @@
     "generate:check": "pnpm run generate && git diff --exit-code -- generated openapi/openapi.yaml",
     "build": "pnpm run generate && pnpm --dir ../.. exec tsdown --config tsdown.config.ts --entry modules/contract/src/index.ts --out-dir modules/contract/dist",
     "typecheck": "pnpm exec tsc --project tsconfig.json --noEmit",
-    "test": "pnpm run build && pnpm --dir ../.. exec vitest run tests/contracts/contract-package.test.ts"
+    "test": "pnpm run build && pnpm --dir ../.. exec vitest run modules/contract/test/contract-package.test.ts"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "^0.96.0",
