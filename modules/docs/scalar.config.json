@@ -1,6 +1,0 @@
-{
-  "input": "../../modules/contract/openapi/openapi.yaml",
-  "output": "./.scalar-dist",
-  "theme": "default",
-  "title": "CZ-Stack API Reference"
-}

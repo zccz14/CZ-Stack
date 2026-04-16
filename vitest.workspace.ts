@@ -27,12 +27,6 @@ export default defineConfig({
           include: ["tests/repo/**/*.test.ts"],
         },
       },
-      {
-        test: {
-          name: "docs",
-          include: ["tests/docs/**/*.test.ts"],
-        },
-      },
     ],
   },
 });

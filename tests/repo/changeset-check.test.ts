@@ -16,14 +16,15 @@ describe("changeset check", () => {
     runChangesetCheck({
       cwd: "/repo",
       env: { CHANGESET_BASE_REF: "origin/main" },
-      execFileSync,
-      existsSync: (path) =>
-        path === "/repo/modules" || path === "/repo/modules/api/package.json",
-      readFileSync: (path) => {
+      execFileSync: execFileSync as never,
+      existsSync: ((path: any) =>
+        path === "/repo/modules" ||
+        path === "/repo/modules/api/package.json") as never,
+      readFileSync: ((path: any) => {
         expect(path).toBe("/repo/modules/api/package.json");
         return JSON.stringify({ private: false });
-      },
-      readdirSync: () => [{ isDirectory: () => true, name: "api" }],
+      }) as never,
+      readdirSync: (() => [{ isDirectory: () => true, name: "api" }]) as never,
       log: vi.fn(),
     });
 
@@ -39,7 +40,7 @@ describe("changeset check", () => {
     const execFileSync = vi.fn((command: string, args: string[]) => {
       if (command === "git") {
         expect(args).toEqual(["diff", "--name-only", "origin/main...HEAD"]);
-        return "modules/docs/src/runtime/bootstrap.ts\n";
+        return "modules/web/src/main.tsx\n";
       }
 
       return "";
@@ -49,14 +50,15 @@ describe("changeset check", () => {
     runChangesetCheck({
       cwd: "/repo",
       env: { CHANGESET_BASE_REF: "origin/main" },
-      execFileSync,
-      existsSync: (path) =>
-        path === "/repo/modules" || path === "/repo/modules/docs/package.json",
-      readdirSync: () => [{ isDirectory: () => true, name: "docs" }],
-      readFileSync: (path) => {
-        expect(path).toBe("/repo/modules/docs/package.json");
+      execFileSync: execFileSync as never,
+      existsSync: ((path: any) =>
+        path === "/repo/modules" ||
+        path === "/repo/modules/web/package.json") as never,
+      readdirSync: (() => [{ isDirectory: () => true, name: "web" }]) as never,
+      readFileSync: ((path: any) => {
+        expect(path).toBe("/repo/modules/web/package.json");
         return JSON.stringify({ private: true });
-      },
+      }) as never,
       log,
     });
 
