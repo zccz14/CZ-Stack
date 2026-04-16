@@ -5,6 +5,20 @@ export const openApiDocument = {
     "title": "CZ-Stack Contract",
     "version": "0.0.0"
   },
+  "servers": [
+    {
+      "url": "https://dev.api.cz-stack.local",
+      "description": "Development"
+    },
+    {
+      "url": "https://staging.api.cz-stack.local",
+      "description": "Staging"
+    },
+    {
+      "url": "https://api.cz-stack.local",
+      "description": "Production"
+    }
+  ],
   "paths": {
     "/health": {
       "get": {

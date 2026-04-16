@@ -1,5 +1,7 @@
 # Scalar OpenAPI Docs Implementation Plan
 
+> 2026-04-16 实现收敛说明：本计划后续执行以“OpenAPI 原生 `servers` + `@scalar/cli` 直接输出最终 HTML”为准；`src/runtime/*`、自定义 server 状态管理、wrapper 注入与自定义 URL 输入不再继续实现。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 新增一个独立静态 `modules/docs` workspace 模块，使用 `@scalar/cli` 消费 `modules/contract/openapi/openapi.yaml` 生成可部署 API 文档，并在浏览器端支持 `dev / staging / prod / custom URL` 的运行时 `baseUrl` 切换。
