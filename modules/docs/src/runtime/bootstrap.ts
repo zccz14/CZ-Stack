@@ -30,6 +30,10 @@ type ScalarReferenceProps = {
   headerLinks: [];
   project: {
     name: string;
+    logo: {
+      darkMode: string;
+      lightMode: string;
+    };
   };
   proxyUrl?: string;
   referenceUid: string;
@@ -159,6 +163,10 @@ const createScalarProps = (
     headerLinks: [],
     project: {
       name: "CZ-Stack API Reference",
+      logo: {
+        darkMode: "",
+        lightMode: "",
+      },
     },
     referenceUid,
     version: {

@@ -1,5 +1,27 @@
 import { expect, test } from "@playwright/test";
 
+const trackRuntimeFailures = (page: import("@playwright/test").Page) => {
+  const failures: string[] = [];
+
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      failures.push(message.text());
+    }
+  });
+
+  page.on("pageerror", (error) => {
+    failures.push(error.message);
+  });
+
+  page.on("response", (response) => {
+    if (response.status() >= 400) {
+      failures.push(`${response.status()} ${response.url()}`);
+    }
+  });
+
+  return failures;
+};
+
 const collectExternalScalarRequests = async (
   page: import("@playwright/test").Page,
 ) => {
@@ -47,9 +69,12 @@ const collectVendoredScalarCssDependencies = async (
 };
 
 test("serves the scalar docs shell from static files", async ({ page }) => {
+  const runtimeFailures = trackRuntimeFailures(page);
+
   await page.goto("/");
 
   await expect(page.getByText("Current server:")).toBeVisible();
+  await expect(page.getByText("Read service health status").first()).toBeVisible();
   await expect(
     page.locator("script[src='./runtime/bootstrap.js']"),
   ).toHaveCount(1);
@@ -63,6 +88,7 @@ test("serves the scalar docs shell from static files", async ({ page }) => {
     .poll(() => collectVendoredScalarCssDependencies(page))
     .toEqual([]);
   await expect.poll(() => collectExternalScalarRequests(page)).toEqual([]);
+  await expect.poll(() => runtimeFailures).toEqual([]);
 });
 
 test("switches between preset environments and restores the last valid choice", async ({
