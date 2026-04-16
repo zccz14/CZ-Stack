@@ -5,11 +5,11 @@ import { spawn } from "node:child_process";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-const repoRoot = new URL("../../", import.meta.url);
-const cliPackageUrl = new URL("../../modules/cli/package.json", import.meta.url);
-const cliBinUrl = new URL("../../modules/cli/bin/dev.js", import.meta.url);
-const cliRootUrl = new URL("../../modules/cli/", import.meta.url);
-const cliCommandSourceUrl = new URL("../../modules/cli/src/commands/health.ts", import.meta.url);
+const repoRoot = new URL("../../../", import.meta.url);
+const cliPackageUrl = new URL("../package.json", import.meta.url);
+const cliBinUrl = new URL("../bin/dev.js", import.meta.url);
+const cliRootUrl = new URL("../", import.meta.url);
+const cliCommandSourceUrl = new URL("../src/commands/health.ts", import.meta.url);
 
 const runningServers = new Set<ReturnType<typeof createServer>>();
 

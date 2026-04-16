@@ -2,18 +2,18 @@ import { access, readFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { adaptGeneratedRequestForPublicFetch } from "../../modules/contract/src/client.js";
+import { adaptGeneratedRequestForPublicFetch } from "../src/client.js";
 
-const contractPackageUrl = new URL("../../modules/contract/package.json", import.meta.url);
-const contractEntryUrl = new URL("../../modules/contract/dist/index.mjs", import.meta.url);
-const contractOpenApiSourceUrl = new URL("../../modules/contract/src/openapi.ts", import.meta.url);
-const contractIndexSourceUrl = new URL("../../modules/contract/src/index.ts", import.meta.url);
-const generatedClientUrl = new URL("../../modules/contract/generated/client.ts", import.meta.url);
-const generatedTypesUrl = new URL("../../modules/contract/generated/types.ts", import.meta.url);
-const generatedZodUrl = new URL("../../modules/contract/generated/zod.ts", import.meta.url);
-const rootPackageUrl = new URL("../../package.json", import.meta.url);
-const vitestWorkspaceUrl = new URL("../../vitest.workspace.ts", import.meta.url);
-const playwrightConfigUrl = new URL("../../playwright.config.ts", import.meta.url);
+const contractPackageUrl = new URL("../package.json", import.meta.url);
+const contractEntryUrl = new URL("../dist/index.mjs", import.meta.url);
+const contractOpenApiSourceUrl = new URL("../src/openapi.ts", import.meta.url);
+const contractIndexSourceUrl = new URL("../src/index.ts", import.meta.url);
+const generatedClientUrl = new URL("../generated/client.ts", import.meta.url);
+const generatedTypesUrl = new URL("../generated/types.ts", import.meta.url);
+const generatedZodUrl = new URL("../generated/zod.ts", import.meta.url);
+const rootPackageUrl = new URL("../../../package.json", import.meta.url);
+const vitestWorkspaceUrl = new URL("../../../vitest.workspace.ts", import.meta.url);
+const playwrightConfigUrl = new URL("../../../playwright.config.ts", import.meta.url);
 
 type ContractPackageManifest = {
   name: string;
@@ -33,7 +33,7 @@ type RootPackageManifest = {
   scripts: Record<string, string>;
 };
 
-type ContractPackageModule = typeof import("../../modules/contract/src/index.js");
+type ContractPackageModule = typeof import("../src/index.js");
 
 let contractPackage: ContractPackageManifest;
 let rootPackage: RootPackageManifest;

@@ -4,15 +4,15 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 
 const apiPackageUrl = new URL(
-  "../../modules/api/package.json",
+  "../package.json",
   import.meta.url,
 );
-const apiEntryUrl = new URL("../../modules/api/dist/app.mjs", import.meta.url);
+const apiEntryUrl = new URL("../dist/app.mjs", import.meta.url);
 const contractEntryUrl = new URL(
-  "../../modules/contract/dist/index.mjs",
+  "../../contract/dist/index.mjs",
   import.meta.url,
 );
-const apiSourceUrl = new URL("../../modules/api/src/app.ts", import.meta.url);
+const apiSourceUrl = new URL("../src/app.ts", import.meta.url);
 
 type ApiPackageManifest = {
   name: string;
@@ -25,9 +25,9 @@ type ApiPackageManifest = {
   };
 };
 
-type ApiPackageModule = typeof import("../../modules/api/src/app.js");
+type ApiPackageModule = typeof import("../src/app.js");
 type ContractPackageModule =
-  typeof import("../../modules/contract/src/index.js");
+  typeof import("../../contract/src/index.js");
 
 let apiPackage: ApiPackageManifest;
 let apiModule: ApiPackageModule;

@@ -6,25 +6,25 @@ export default defineConfig({
       {
         test: {
           name: "contract",
-          include: ["tests/contracts/contract-package.test.ts"],
+          include: ["modules/contract/test/**/*.test.ts"],
         },
       },
       {
         test: {
           name: "api",
-          include: ["tests/api/**/*.test.ts"],
+          include: ["modules/api/test/**/*.test.ts"],
         },
       },
       {
         test: {
           name: "cli",
-          include: ["tests/cli/**/*.test.ts"],
+          include: ["modules/cli/test/**/*.test.ts"],
         },
       },
       {
         test: {
           name: "repo",
-          include: ["tests/repo/**/*.test.ts"],
+          include: ["test/repo/**/*.test.ts"],
         },
       },
     ],
