@@ -7,6 +7,7 @@ const docsDir = new URL("../", import.meta.url);
 const distDir = new URL("../dist/", import.meta.url);
 const runtimeDir = new URL("../dist/runtime/", import.meta.url);
 const scalarAssetsDir = new URL("../dist/scalar-assets/", import.meta.url);
+const scalarBundledAssetsDir = new URL("../dist/scalar-assets/assets/", import.meta.url);
 const scalarCliDir = new URL("../node_modules/@scalar/cli/", import.meta.url);
 const scalarClientAssetsDir = new URL("./client/assets/", scalarCliDir);
 const runtimeSourceDir = new URL("../src/runtime/", import.meta.url);
@@ -48,11 +49,12 @@ if (!scalarEntryScript || !scalarEntryStylesheet || !scalarReferenceModule) {
   );
 }
 
-const scalarWrapperSource = `import { ae as createApp } from "./${scalarEntryScript}";
-import { ScalarReference } from "./${scalarReferenceModule}";
+const scalarWrapperSource = `import { ae as createApp, av as createScalarAppPlugin } from "./assets/${scalarEntryScript}";
+import { ScalarReference } from "./assets/${scalarReferenceModule}";
 
 export const createScalarReferenceApp = (target, props) => {
   const app = createApp(ScalarReference, props);
+  app.use(createScalarAppPlugin());
   app.mount(target);
   return app;
 };
@@ -75,7 +77,7 @@ const patchScalarFontSources = (source) => {
 const patchScalarStylesheet = async () => {
   const scalarStylesheetPath = new URL(
     `./${scalarEntryStylesheet}`,
-    scalarAssetsDir,
+    scalarBundledAssetsDir,
   );
   const stylesheetSource = await readFile(scalarStylesheetPath, "utf8");
   const patchedStylesheet = patchScalarFontSources(stylesheetSource);
@@ -89,6 +91,53 @@ const patchScalarStylesheet = async () => {
   await writeFile(scalarStylesheetPath, patchedStylesheet, "utf8");
 };
 
+const patchScalarAssetModuleSpecifiers = async () => {
+  const entries = await readdir(scalarBundledAssetsDir, {
+    recursive: true,
+    withFileTypes: true,
+  });
+
+  await Promise.all(
+    entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".js"))
+      .map(async (entry) => {
+        const assetPath = new URL(`./${entry.name}`, scalarBundledAssetsDir);
+        const source = await readFile(assetPath, "utf8");
+        const patchedSource = source.replaceAll('"assets/', '"./');
+
+        if (patchedSource !== source) {
+          await writeFile(assetPath, patchedSource, "utf8");
+        }
+      }),
+  );
+};
+
+const patchScalarEntryScript = async () => {
+  const scalarEntryScriptPath = new URL(
+    `./${scalarEntryScript}`,
+    scalarBundledAssetsDir,
+  );
+  const entrySource = await readFile(scalarEntryScriptPath, "utf8");
+  const patchedEntrySource = entrySource
+    .replace(
+      'const Fp="modulepreload",Zp=function(e){return"/"+e},Sa={}',
+      'const Fp="modulepreload",Zp=function(e){return new URL(e,import.meta.url).href},Sa={}',
+    )
+    .replace(
+      /function Ig\(\)\{[\s\S]*?jc\(\$g\.port,\{[\s\S]*?\}\);export\{/,
+      'function Ig(){return{port:Number.NaN}}export{',
+    )
+    .replace(/};\s*$/, ',Sh as av};');
+
+  if (patchedEntrySource === entrySource) {
+    throw new Error(
+      "expected to patch the vendored Scalar entry script for static embedding",
+    );
+  }
+
+  await writeFile(scalarEntryScriptPath, patchedEntrySource, "utf8");
+};
+
 const docsHtml = `<!doctype html>
 <html>
   <head>
@@ -100,7 +149,7 @@ const docsHtml = `<!doctype html>
         margin: 0;
       }
     </style>
-    <link rel="stylesheet" href="./scalar-assets/${scalarEntryStylesheet}" />
+    <link rel="stylesheet" href="./scalar-assets/assets/${scalarEntryStylesheet}" />
     <link rel="stylesheet" href="./runtime/styles.css" />
   </head>
   <body>
@@ -120,6 +169,7 @@ await rm(runtimeTsBuildInfoPath, { force: true });
 await mkdir(distDir, { recursive: true });
 await mkdir(runtimeDir, { recursive: true });
 await mkdir(scalarAssetsDir, { recursive: true });
+await mkdir(scalarBundledAssetsDir, { recursive: true });
 
 if (await hasRuntimeTypeScript()) {
   await run("pnpm", ["exec", "tsc", "--project", "./tsconfig.json"], {
@@ -131,15 +181,17 @@ if (await hasRuntimeTypeScript()) {
 }
 
 await cp(runtimeStylesPath, new URL("./styles.css", runtimeDir));
-await cp(scalarClientAssetsDir, scalarAssetsDir, { recursive: true });
+await cp(scalarClientAssetsDir, scalarBundledAssetsDir, { recursive: true });
+await patchScalarAssetModuleSpecifiers();
 await patchScalarStylesheet();
+await patchScalarEntryScript();
 await cp(
   new URL("../../contract/openapi/openapi.yaml", import.meta.url),
   new URL("../dist/openapi.yaml", import.meta.url),
 );
 const referenceModulePath = new URL(
   `./${scalarReferenceModule}`,
-  scalarAssetsDir,
+  scalarBundledAssetsDir,
 );
 const referenceModuleSource = await readFile(referenceModulePath, "utf8");
 const patchedReferenceModuleSource = patchScalarFontSources(
