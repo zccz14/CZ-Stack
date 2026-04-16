@@ -1,5 +1,9 @@
 import { execFileSync as defaultExecFileSync } from "node:child_process";
-import { existsSync as defaultExistsSync, readdirSync as defaultReaddirSync } from "node:fs";
+import {
+  existsSync as defaultExistsSync,
+  readdirSync as defaultReaddirSync,
+  readFileSync as defaultReadFileSync,
+} from "node:fs";
 import { fileURLToPath } from "node:url";
 
 export const runChangesetCheck = ({
@@ -7,6 +11,7 @@ export const runChangesetCheck = ({
   env = process.env,
   execFileSync = defaultExecFileSync,
   existsSync = defaultExistsSync,
+  readFileSync = defaultReadFileSync,
   readdirSync = defaultReaddirSync,
   log = console.log,
 } = {}) => {
@@ -17,22 +22,38 @@ export const runChangesetCheck = ({
         .filter((entry) => entry.isDirectory())
         .map((entry) => `modules/${entry.name}`)
         .filter((dir) => existsSync(`${cwd}/${dir}/package.json`))
+        .filter((dir) => {
+          const manifest = JSON.parse(
+            readFileSync(`${cwd}/${dir}/package.json`, "utf8"),
+          );
+          return manifest.private !== true;
+        })
     : [];
 
-  const changedFiles = execFileSync("git", ["diff", "--name-only", `${baseRef}...HEAD`], {
-    encoding: "utf8",
-  })
+  const changedFiles = execFileSync(
+    "git",
+    ["diff", "--name-only", `${baseRef}...HEAD`],
+    {
+      encoding: "utf8",
+    },
+  )
     .split("\n")
     .filter(Boolean);
 
-  const touchesPackageWork = packageDirs.some((dir) => changedFiles.some((file) => file.startsWith(`${dir}/`)));
+  const touchesPackageWork = packageDirs.some((dir) =>
+    changedFiles.some((file) => file.startsWith(`${dir}/`)),
+  );
 
   if (!touchesPackageWork) {
-    log("No module package changes detected; skipping changeset enforcement.");
+    log(
+      "No releaseable module changes detected; skipping changeset enforcement.",
+    );
     return;
   }
 
-  execFileSync("pnpm", ["exec", "changeset", "status", "--since", baseRef], { stdio: "inherit" });
+  execFileSync("pnpm", ["exec", "changeset", "status", "--since", baseRef], {
+    stdio: "inherit",
+  });
 };
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
