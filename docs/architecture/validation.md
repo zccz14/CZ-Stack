@@ -56,7 +56,7 @@
 
 ### `pnpm openapi:check`
 
-- 目的：确认 contract 导出的 OpenAPI 文档仍符合 API 文档入口预期。
+- 目的：确认 contract 导出的 OpenAPI 文档仍符合仓库对外口径。
 - 预期结果：contract build 成功，且导出的 OpenAPI 版本为 `3.1.0`，包含 health path。
 - 失败先看：`modules/contract/openapi/openapi.yaml`、`modules/contract/generated/openapi.ts`、`modules/contract/src/openapi.ts`、`modules/contract/src/index.ts`。
 
@@ -73,7 +73,7 @@
 - README 与 `docs/` 内的相对链接均可解析。
 - 命令名与根 `package.json` 中脚本完全一致。
 - 文档描述的是**当前已实现基线**，不是过时的“未来计划”。
-- API 文档入口始终指向 contract 同源生成的 `/openapi.json`；若需要展示层，也应由 API 之外的文档入口承载，而不是第二份手写规范。
+- API 文档事实源始终回到 `modules/contract/openapi/openapi.yaml`；若部署后存在 `/openapi.yaml` 或 `/openapi.json`，它们都只能是同源发布/导出结果。
 
 ## 何时升级处理
 
@@ -81,5 +81,5 @@
 
 - 需要让 `contract` 反向依赖 API / Web / CLI 才能通过验证。
 - 需要新增新的共享数据库抽象层才能维持现有测试或文档叙述。
-- 需要新增第二份 API 规范、手写 SDK 或 docs 事实源才能解释当前行为。
+- 需要新增第二份 API 规范、手写 SDK 或仓库内 docs 事实源才能解释当前行为。
 - 文档要描述的仓库现实已经超出当前 spec / plan 的批准范围。

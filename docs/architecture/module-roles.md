@@ -10,9 +10,9 @@
 
 - 职责：维护 OpenAPI、Zod schema、共享类型、typed client 与未来 SDK 生成位点。
 - 允许依赖：仅允许依赖极少量与协议表达直接相关的基础库。
-- 被谁依赖：`api-service`、`web-app`、`cli-tool`、`docs-site`、`tooling-package`。
+- 被谁依赖：`api-service`、`web-app`、`cli-tool`、`tooling-package`，以及任何仓库外文档展示入口。
 - 禁止：反向依赖任何应用层、服务层、数据库层或文档展示实现。
-- 当前落地要求：`@cz-stack/contract` 必须继续作为 OpenAPI、Zod 与共享 client 的单一协议事实源；API 文档、Web/CLI 消费与后续 SDK 生成都不得绕开该中心另建协议分支。
+- 当前落地要求：`@cz-stack/contract` 必须继续作为 OpenAPI、Zod 与共享 client 的单一协议事实源；其中 `modules/contract/openapi/openapi.yaml` 是唯一可手工维护的事实源，`/openapi.yaml` 与 `/openapi.json` 都只能是它的发布/导出形态。
 
 ### `api-service`
 
@@ -20,7 +20,7 @@
 - 允许依赖：`contract-package`、必要的 `tooling-package`。
 - 被谁依赖：通常只被运行入口、测试与部署配置消费。
 - 禁止：要求 `contract-package` 反向依赖服务实现；禁止把 Web/CLI 运行时逻辑下沉进 API 服务。
-- 当前落地要求：`@cz-stack/api` 已提供 `/health` 与 `/openapi.json`；其中 `/openapi.json` 必须继续由 contract 同源驱动，API 服务不再内置 `/docs` 文档页面，也不承担文档展示职责。
+- 当前落地要求：`@cz-stack/api` 已提供 `/health` 与 `/openapi.json`；其中 `/openapi.json` 必须继续由 contract 同源驱动，但它只是 JSON 导出结果，不是事实源。
 
 ### `web-app`
 
@@ -45,14 +45,6 @@
 - 被谁依赖：任意模块按需消费。
 - 禁止：承载业务运行时核心逻辑；禁止通过工具层反向要求应用层提供实现细节。
 
-### `docs-site`
-
-- 职责：展示 README、架构说明与由 contract 同源生成的 API 文档。
-- 允许依赖：`contract-package`、必要的 `tooling-package`。
-- 被谁依赖：通常只被文档部署流程消费。
-- 禁止：维护第二份手写 API 规范；禁止让 contract 依赖 docs-site 的展示实现。
-- 当前落地要求：在完整 docs-site 尚未存在前，README 与 `docs/api/README.md` 只负责说明文档入口与边界；API 文档展示不再由 API 服务内置 `/docs` 承担，它们也不能变成新的协议事实源。
-
 ## 依赖方向
 
 推荐依赖方向如下：
@@ -62,7 +54,6 @@ contract-package -> shared protocol source
 api-service -----> contract-package, tooling-package
 web-app ---------> contract-package, tooling-package
 cli-tool --------> contract-package, tooling-package
-docs-site -------> contract-package, tooling-package
 tooling-package -> base libraries / optional contract-package
 ```
 
@@ -70,13 +61,13 @@ tooling-package -> base libraries / optional contract-package
 
 ## 禁止反向依赖规则
 
-1. `contract-package` 不得反向依赖 `api-service`、`web-app`、`cli-tool` 或 `docs-site`。
-2. `docs-site` 只能展示由 contract 同源生成的内容，不得成为协议事实源。
+1. `contract-package` 不得反向依赖 `api-service`、`web-app` 或 `cli-tool`。
+2. README 与 `docs/` 只能说明如何消费 contract 同源导出的文档，不得演变成第二份协议定义。
 3. `web-app` 与 `cli-tool` 可以消费 contract，但不得要求 contract 为各自维护分叉协议。
 4. `tooling-package` 可以服务多角色模块，但不得吸收应用层专属业务逻辑，避免形成隐式反向依赖。
 5. SQLite-first 只是后端服务默认优先采用嵌入式存储的姿态，不得被误读为“所有项目必须永久使用 SQLite”。
 6. SDK 生成是围绕 contract 的可选扩展，而不是首版必须交付物。
-7. 文档入口只能说明现状、入口与边界，不应复制或扩展超出当前实现的接口细节。
+7. 仓库当前不内置 docs 项目；若未来需要展示层，也必须继续只读消费 `modules/contract/openapi/openapi.yaml` 或其导出结果。
 
 ## 落地判断标准
 
