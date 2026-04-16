@@ -1,5 +1,7 @@
 # Scalar OpenAPI 静态文档模块设计说明
 
+> 2026-04-16 实现收敛说明：已确认放弃 docs 模块自定义 runtime / wrapper 方案，改为在 `modules/contract/openapi/openapi.yaml` 中声明原生 `servers`，并由 `@scalar/cli` 直接产出最终 HTML；本文中与 `baseUrl` 注入、自定义 URL 输入、浏览器持久化相关的旧方案不再作为实现依据。
+
 ## 背景 / 问题
 
 当前仓库已经把 `modules/contract/openapi/openapi.yaml` 作为 OpenAPI 契约源，但缺少一个独立、可静态部署的 API 文档模块来直接消费这份契约并对外展示。现状下存在几个问题：

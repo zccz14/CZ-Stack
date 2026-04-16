@@ -68,92 +68,35 @@ const collectVendoredScalarCssDependencies = async (
   });
 };
 
-test("serves the scalar docs shell from static files", async ({ page }) => {
+test("serves direct Scalar CLI html without the custom wrapper", async ({ page }) => {
   const runtimeFailures = trackRuntimeFailures(page);
 
   await page.goto("/");
 
-  await expect(page.getByText("Current server:")).toBeVisible();
   await expect(page.getByText("Read service health status").first()).toBeVisible();
-  await expect(
-    page.locator("script[src='./runtime/bootstrap.js']"),
-  ).toHaveCount(1);
-  await expect(page.locator("link[href^='./scalar-assets/']")).toHaveCount(1);
-  await expect(page.locator("script[src*='cdn.jsdelivr.net']")).toHaveCount(0);
-  await expect(
-    page.locator("script[data-proxy-url], #api-reference[data-proxy-url]"),
-  ).toHaveCount(0);
-  await expect(page.getByText("404")).toHaveCount(0);
-  await expect
-    .poll(() => collectVendoredScalarCssDependencies(page))
-    .toEqual([]);
-  await expect.poll(() => collectExternalScalarRequests(page)).toEqual([]);
+  await expect(page.getByText("Current server:")).toHaveCount(0);
+  await expect(page.locator("script[src='./runtime/bootstrap.js']")).toHaveCount(0);
+  await expect(page.locator("link[href^='./scalar-assets/']")).toHaveCount(0);
+  await expect(page.locator("script[src*='cdn.jsdelivr.net']")).toHaveCount(1);
+  await expect(page.locator("script[data-proxy-url], #api-reference[data-proxy-url]")).toHaveCount(1);
+  await expect(page.locator("script#api-reference")).toHaveCount(1);
+  await expect(collectVendoredScalarCssDependencies(page)).resolves.toEqual([]);
+  await expect.poll(() => collectExternalScalarRequests(page)).not.toEqual([]);
   await expect.poll(() => runtimeFailures).toEqual([]);
 });
 
-test("switches between preset environments and restores the last valid choice", async ({
-  page,
-}) => {
+test("embeds native OpenAPI servers without custom controls", async ({ page }) => {
   await page.goto("/");
 
-  await expect(
-    page.getByText("Current server: https://dev.api.cz-stack.local"),
-  ).toBeVisible();
+  const inlineConfig = await page.locator("script#api-reference").textContent();
 
-  await page.getByRole("combobox").selectOption("staging");
-  await expect(
-    page.getByText("Current server: https://staging.api.cz-stack.local"),
-  ).toBeVisible();
-
-  await page.getByRole("combobox").selectOption("prod");
-  await expect(
-    page.getByText("Current server: https://api.cz-stack.local"),
-  ).toBeVisible();
-
-  await page.reload();
-  await expect(
-    page.getByText("Current server: https://api.cz-stack.local"),
-  ).toBeVisible();
-  await expect
-    .poll(() => collectVendoredScalarCssDependencies(page))
-    .toEqual([]);
-  await expect.poll(() => collectExternalScalarRequests(page)).toEqual([]);
-});
-
-test("accepts a valid custom url and ignores invalid input", async ({
-  page,
-}) => {
-  await page.goto("/");
-
-  await page.getByRole("combobox").selectOption("prod");
-  await expect(
-    page.getByText("Current server: https://api.cz-stack.local"),
-  ).toBeVisible();
-
-  const customInput = page.getByPlaceholder(
-    "https://review.api.cz-stack.local/",
-  );
-  await customInput.fill("review.api.cz-stack.local");
-  await page.getByRole("button", { name: "Apply custom URL" }).click();
-  await expect(
-    page.getByText("Current server: https://api.cz-stack.local"),
-  ).toBeVisible();
-  await expect(
-    page.evaluate(() => localStorage.getItem("cz-stack.scalar.server")),
-  ).resolves.toBe(JSON.stringify({ kind: "preset", presetId: "prod" }));
-
-  await customInput.fill("https://review.api.cz-stack.local/");
-  await page.getByRole("button", { name: "Apply custom URL" }).click();
-  await expect(
-    page.getByText("Current server: https://review.api.cz-stack.local/"),
-  ).toBeVisible();
-
-  await page.reload();
-  await expect(
-    page.getByText("Current server: https://review.api.cz-stack.local/"),
-  ).toBeVisible();
-  await expect
-    .poll(() => collectVendoredScalarCssDependencies(page))
-    .toEqual([]);
-  await expect.poll(() => collectExternalScalarRequests(page)).toEqual([]);
+  expect(inlineConfig).toContain('"servers"');
+  expect(inlineConfig).toContain('"url":"https://dev.api.cz-stack.local"');
+  expect(inlineConfig).toContain('"description":"Development"');
+  expect(inlineConfig).toContain('"url":"https://staging.api.cz-stack.local"');
+  expect(inlineConfig).toContain('"description":"Staging"');
+  expect(inlineConfig).toContain('"url":"https://api.cz-stack.local"');
+  expect(inlineConfig).toContain('"description":"Production"');
+  await expect(page.getByPlaceholder("https://review.api.cz-stack.local/")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Apply custom URL" })).toHaveCount(0);
 });
