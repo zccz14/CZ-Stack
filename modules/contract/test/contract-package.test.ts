@@ -68,12 +68,19 @@ describe("contract package baseline", () => {
     await expect(access(vitestWorkspaceUrl)).resolves.toBeUndefined();
     await expect(access(playwrightConfigUrl)).resolves.toBeUndefined();
     expect(rootPackage.scripts).toMatchObject({
-      "test:unit": expect.any(String),
-      "test:integration": expect.any(String),
-      "test:e2e": expect.any(String),
-      "smoke:cli": expect.any(String),
+      "test:repo": expect.any(String),
+      "test:type": expect.any(String),
+      "test:lint": expect.any(String),
+      "test:smoke": expect.any(String),
+      "test:web": expect.any(String),
+      test: expect.stringContaining("pnpm run test:repo"),
+      smoke: expect.stringContaining("pnpm run test:smoke"),
       validate: expect.stringContaining("pnpm test"),
     });
+    expect(rootPackage.scripts).not.toHaveProperty("test:unit");
+    expect(rootPackage.scripts).not.toHaveProperty("test:integration");
+    expect(rootPackage.scripts).not.toHaveProperty("test:e2e");
+    expect(rootPackage.scripts).not.toHaveProperty("smoke:cli");
   });
 
   it("keeps a minimal browser matrix in the Playwright baseline", () => {
