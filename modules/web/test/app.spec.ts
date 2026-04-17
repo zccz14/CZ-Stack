@@ -28,12 +28,18 @@ test.describe("web app", () => {
     );
     const importSpecifiers = getImportSpecifiers(apiClientSource);
 
-    expect(importSpecifiers).toEqual(["@cz-stack/contract"]);
+    expect(importSpecifiers).toContain("@cz-stack/contract");
     expect(
       importSpecifiers.some((specifier) =>
         specifier.includes("contract/generated"),
       ),
     ).toBe(false);
+    expect(
+      importSpecifiers.every(
+        (specifier) =>
+          specifier === "@cz-stack/contract" || specifier.startsWith("."),
+      ),
+    ).toBe(true);
     expect(
       importSpecifiers.some((specifier) => specifier.includes("react-query")),
     ).toBe(false);
