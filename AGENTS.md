@@ -107,8 +107,8 @@
 1. spec 文档必须使用中文。
 2. implementation plan 不需要请求用户 review，也不需要询问用户是否同意 implementation plan。
 3. 用户只 review spec 文档；Agent 不得把 implementation plan 当作等待用户批准的门禁。
-4. implementation plan 完成后，后续执行只能使用 Subagent-Driven；禁止改为 Inline Execution。
-5. implementation plan 完成后，Agent 不得再询问用户是选择 Subagent-Driven 还是 Inline Execution。
+4. implementation plan 完成后，后续执行只能继续由 Sub Agent 执行；禁止改为由主 Agent 直接执行（即 Inline Execution）。
+5. Agent 不得询问用户是选择 Sub Agent 执行还是主 Agent 直接执行（即 Inline Execution）。
 6. 如果任务需要 spec，则必须先完成 spec，再进入 implementation plan 和实现阶段；禁止跳过 spec 直接编码。
 7. 如果任务不需要 spec，不得为了走流程而强制补写 spec。
 8. 如果 spec 已存在，后续实现必须以该 spec 为准；禁止在实现阶段擅自扩展超出 spec 的 scope，除非用户明确要求。
@@ -140,8 +140,8 @@
 17. 禁止在 PR checks 失败、存在 blocking review、存在 merge conflict 或存在仓库保护规则阻塞时提前合并。
 18. 禁止通过绕过审批、绕过 checks 或其他 bypass 保护规则的方式强行合并 PR。
 19. 禁止在仍需继续处理 checks / review / merge / worktree 清理 / 主工作区基线刷新时宣告任务完成。
-20. 禁止在 implementation plan 完成后使用 Inline Execution。
-21. 禁止在 implementation plan 完成后要求用户在 Subagent-Driven 与 Inline Execution 之间做选择。
+20. 禁止在 implementation plan 完成后改为由主 Agent 直接执行（即 Inline Execution）。
+21. 禁止要求用户在 Sub Agent 执行与主 Agent 直接执行（即 Inline Execution）之间做选择。
 
 ## 9. 快速判定口径
 
