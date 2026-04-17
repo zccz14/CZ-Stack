@@ -24,6 +24,10 @@ const playwrightConfigUrl = new URL(
   "../../../playwright.config.ts",
   import.meta.url,
 );
+const ciWorkflowUrl = new URL(
+  "../../../.github/workflows/ci.yml",
+  import.meta.url,
+);
 
 type ContractPackageManifest = {
   name: string;
@@ -49,6 +53,7 @@ let contractPackage: ContractPackageManifest;
 let rootPackage: RootPackageManifest;
 let contractModule: ContractPackageModule;
 let playwrightConfigSource: string;
+let ciWorkflowSource: string;
 
 beforeAll(async () => {
   contractPackage = JSON.parse(
@@ -58,6 +63,7 @@ beforeAll(async () => {
     await readFile(rootPackageUrl, "utf8"),
   ) as RootPackageManifest;
   playwrightConfigSource = await readFile(playwrightConfigUrl, "utf8");
+  ciWorkflowSource = await readFile(ciWorkflowUrl, "utf8");
   contractModule = (await import(
     pathToFileURL(fileURLToPath(contractEntryUrl)).href
   )) as ContractPackageModule;
@@ -98,6 +104,17 @@ describe("contract package baseline", () => {
   it("keeps a minimal browser matrix in the Playwright baseline", () => {
     expect(playwrightConfigSource).toContain('name: "chromium"');
     expect(playwrightConfigSource).toContain('name: "firefox"');
+  });
+
+  it("keeps CI wired to the package-local test entrypoints", () => {
+    expect(ciWorkflowSource).toContain("run: pnpm test");
+    expect(ciWorkflowSource).toContain("run: pnpm smoke");
+    expect(ciWorkflowSource).toContain("run: pnpm test:web");
+    expect(ciWorkflowSource).not.toContain(
+      "pnpm test:unit && pnpm test:integration",
+    );
+    expect(ciWorkflowSource).not.toContain("pnpm test:e2e");
+    expect(ciWorkflowSource).not.toContain("pnpm smoke:cli");
   });
 
   it("publishes the expected package export contract", () => {
