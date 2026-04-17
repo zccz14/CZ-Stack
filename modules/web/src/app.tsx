@@ -1,69 +1,23 @@
-import { ContractClientError, type HealthError } from "@cz-stack/contract";
-import { useEffect, useState } from "react";
-
-import { createWebApiClient } from "./lib/api-client.js";
-
-type HealthViewModel =
-  | { state: "loading" }
-  | { state: "success"; healthStatus: string }
-  | { state: "error"; message: string };
-
-const defaultApiClient = createWebApiClient();
-
-const fallbackError: HealthError = {
-  code: "UNAVAILABLE",
-  message: "unexpected error",
-};
+import { getHealthErrorMessage } from "./features/health/queries.js";
+import { useHealthQuery } from "./features/health/use-health-query.js";
 
 export const App = () => {
-  const [health, setHealth] = useState<HealthViewModel>({ state: "loading" });
+  const healthQuery = useHealthQuery();
+  let healthContent = null;
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadHealth = async () => {
-      try {
-        const response = await defaultApiClient.getHealth();
-
-        if (cancelled) {
-          return;
-        }
-
-        setHealth({
-          state: "success",
-          healthStatus: response.status,
-        });
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        const healthError =
-          error instanceof ContractClientError ? error.error : fallbackError;
-
-        setHealth({
-          state: "error",
-          message: `API unavailable: ${healthError.message}`,
-        });
-      }
-    };
-
-    void loadHealth();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  if (healthQuery.isPending) {
+    healthContent = <p>Loading health status…</p>;
+  } else if (healthQuery.isError) {
+    healthContent = <p>{getHealthErrorMessage(healthQuery.error)}</p>;
+  } else if (healthQuery.isSuccess) {
+    healthContent = <p>API health: {healthQuery.data.status}</p>;
+  }
 
   return (
     <main>
       <h1>CZ-Stack Web</h1>
       <p>Contract-driven health check</p>
-      {health.state === "loading" ? <p>Loading health status…</p> : null}
-      {health.state === "success" ? (
-        <p>API health: {health.healthStatus}</p>
-      ) : null}
-      {health.state === "error" ? <p>{health.message}</p> : null}
+      {healthContent}
     </main>
   );
 };
