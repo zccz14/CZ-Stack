@@ -28,21 +28,23 @@ test.describe("web app", () => {
     );
     const importSpecifiers = getImportSpecifiers(apiClientSource);
 
-    expect(importSpecifiers).toContain("@cz-stack/contract");
+    expect(importSpecifiers).toEqual(["@cz-stack/contract"]);
     expect(
       importSpecifiers.some((specifier) =>
         specifier.includes("contract/generated"),
       ),
     ).toBe(false);
+    expect(
+      importSpecifiers.some((specifier) => specifier.includes("react-query")),
+    ).toBe(false);
     expect(apiClientSource).toContain("return createContractClient({");
     expect(apiClientSource).toContain("fetch: (input, init) =>");
     expect(apiClientSource).not.toContain("createContractClient({ baseUrl:");
+    expect(apiClientSource).not.toContain("@tanstack/react-query");
     expect(apiClientSource).not.toContain("ContractClientError");
     expect(apiClientSource).not.toContain("WebHealthResult");
     expect(apiClientSource).not.toContain("HealthResponse");
     expect(apiClientSource).not.toContain("HealthError");
-    expect(apiClientSource).not.toContain("queryOptions");
-    expect(apiClientSource).not.toContain("useQuery");
     expect(apiClientSource).not.toContain("getHealth()");
   });
 
