@@ -41,6 +41,8 @@ test.describe("web app", () => {
     expect(apiClientSource).not.toContain("WebHealthResult");
     expect(apiClientSource).not.toContain("HealthResponse");
     expect(apiClientSource).not.toContain("HealthError");
+    expect(apiClientSource).not.toContain("queryOptions");
+    expect(apiClientSource).not.toContain("useQuery");
     expect(apiClientSource).not.toContain("getHealth()");
   });
 
