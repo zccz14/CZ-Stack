@@ -7,7 +7,11 @@
     "dev": "pnpm exec vite",
     "build": "pnpm exec vite build",
     "preview": "pnpm exec vite preview",
-    "typecheck": "pnpm exec tsc --project tsconfig.json --noEmit"
+    "typecheck": "pnpm exec tsc --project tsconfig.json --noEmit",
+    "test:type": "pnpm run typecheck",
+    "test:lint": "pnpm --dir ../.. exec biome check modules/web/package.json modules/web/src modules/web/test",
+    "test:web": "pnpm --dir ../.. --filter @cz-stack/contract run build && pnpm --dir ../.. exec playwright test --config playwright.config.ts",
+    "test": "pnpm run test:type && pnpm run test:lint && pnpm run test:web"
   },
   "dependencies": {
     "@cz-stack/contract": "workspace:*",

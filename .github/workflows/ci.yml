@@ -25,8 +25,8 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Unit and integration tests
-        run: pnpm test:unit && pnpm test:integration
+      - name: Package-local tests
+        run: pnpm run test:repo && pnpm --filter=!@cz-stack/web -r --workspace-concurrency=1 --if-present run test
 
       - name: Build
         run: pnpm build
@@ -38,7 +38,7 @@ jobs:
         run: pnpm changeset:check
 
       - name: CLI smoke
-        run: pnpm smoke:cli
+        run: pnpm smoke
 
   playwright:
     name: Playwright
@@ -67,4 +67,4 @@ jobs:
         run: pnpm exec playwright install chromium firefox
 
       - name: Run Playwright suite
-        run: pnpm test:e2e
+        run: pnpm test:web

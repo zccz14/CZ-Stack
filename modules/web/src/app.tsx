@@ -48,7 +48,9 @@ export const App = () => {
       <h1>CZ-Stack Web</h1>
       <p>Contract-driven health check</p>
       {health.state === "loading" ? <p>Loading health status…</p> : null}
-      {health.state === "success" ? <p>API health: {health.healthStatus}</p> : null}
+      {health.state === "success" ? (
+        <p>API health: {health.healthStatus}</p>
+      ) : null}
       {health.state === "error" ? <p>{health.message}</p> : null}
     </main>
   );

@@ -1,4 +1,4 @@
-import { Command, execute, settings } from "@oclif/core";
+import { type Command, execute, settings } from "@oclif/core";
 
 import HealthCommand from "./commands/health.js";
 
