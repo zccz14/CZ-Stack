@@ -6,7 +6,7 @@ const getImportSpecifiers = (source: string) =>
   );
 
 test.describe("web app", () => {
-  test("keeps the web client on the contract root boundary", async () => {
+  test("keeps the web client as a contract-client fetch pass-through", async () => {
     const { readFile } = await import("node:fs/promises");
     const apiClientSource = await readFile(
       `${process.cwd()}/modules/web/src/lib/api-client.ts`,
@@ -20,9 +20,27 @@ test.describe("web app", () => {
         specifier.includes("contract/generated"),
       ),
     ).toBe(false);
-    expect(apiClientSource).toContain("createContractClient({");
+    expect(apiClientSource).toContain("return createContractClient({");
     expect(apiClientSource).toContain("fetch: (input, init) =>");
     expect(apiClientSource).not.toContain("createContractClient({ baseUrl:");
+    expect(apiClientSource).not.toContain("ContractClientError");
+    expect(apiClientSource).not.toContain("WebHealthResult");
+    expect(apiClientSource).not.toContain("HealthResponse");
+    expect(apiClientSource).not.toContain("HealthError");
+    expect(apiClientSource).not.toContain("getHealth()");
+  });
+
+  test("merges Request init overrides before rewriting request URLs", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const apiClientSource = await readFile(
+      `${process.cwd()}/modules/web/src/lib/api-client.ts`,
+      "utf8",
+    );
+
+    expect(apiClientSource).not.toContain("new Request(resolvedUrl, input)");
+    expect(apiClientSource).toContain(
+      "new Request(resolvedUrl, new Request(input, init))",
+    );
   });
 
   test("loads the health status from the contract-driven client via the /api prefix", async ({
