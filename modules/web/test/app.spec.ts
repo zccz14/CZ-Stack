@@ -94,6 +94,10 @@ test.describe("web app", () => {
     expect(appSource).not.toContain("useEffect(");
     expect(appSource).not.toContain("useState(");
     expect(appSource).not.toContain("createWebApiClient()");
+    expect(appSource).toContain("let healthContent = null");
+    expect(appSource).toContain("if (healthQuery.isPending)");
+    expect(appSource).toContain("else if (healthQuery.isError)");
+    expect(appSource).toContain("else if (healthQuery.isSuccess)");
   });
 
   test("loads the health status from the contract-driven client via the /api prefix", async ({
