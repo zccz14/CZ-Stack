@@ -59,14 +59,20 @@ test.describe("web app", () => {
 
   test("keeps health query definitions feature-local", async () => {
     const { readFile } = await import("node:fs/promises");
-    const appSource = await readFile(
-      `${process.cwd()}/modules/web/src/app.tsx`,
+    const queriesSource = await readFile(
+      `${process.cwd()}/modules/web/src/features/health/queries.ts`,
+      "utf8",
+    );
+    const useHealthQuerySource = await readFile(
+      `${process.cwd()}/modules/web/src/features/health/use-health-query.ts`,
       "utf8",
     );
 
-    expect(appSource).toContain("./features/health/use-health-query.js");
-    expect(appSource).not.toContain("./lib/api-client.js");
-    expect(appSource).not.toContain("ContractClientError");
+    expect(queriesSource).toContain("../../lib/api-client.js");
+    expect(queriesSource).toContain("ContractClientError");
+    expect(useHealthQuerySource).toContain("./queries.js");
+    expect(useHealthQuerySource).not.toContain("../../lib/api-client.js");
+    expect(useHealthQuerySource).not.toContain("ContractClientError");
   });
 
   test("loads the health status from the contract-driven client via the /api prefix", async ({
