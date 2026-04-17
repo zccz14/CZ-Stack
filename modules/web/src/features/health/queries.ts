@@ -22,4 +22,6 @@ export const getHealthErrorMessage = (error: unknown) => {
 export const healthQueryOptions = queryOptions({
   queryKey: healthQueryKey,
   queryFn: () => healthApiClient.getHealth(),
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
 });

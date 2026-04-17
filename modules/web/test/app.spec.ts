@@ -110,6 +110,23 @@ test.describe("web app", () => {
     expect(appSource).toContain("else if (healthQuery.isSuccess)");
   });
 
+  test("keeps the migrated health page on one-shot query behavior", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const queriesSource = await readFile(
+      `${process.cwd()}/modules/web/src/features/health/queries.ts`,
+      "utf8",
+    );
+    const queryClientSource = await readFile(
+      `${process.cwd()}/modules/web/src/lib/query-client.ts`,
+      "utf8",
+    );
+
+    expect(queriesSource).toContain("refetchOnWindowFocus: false");
+    expect(queriesSource).toContain("refetchOnReconnect: false");
+    expect(queryClientSource).not.toContain("refetchOnWindowFocus");
+    expect(queryClientSource).not.toContain("refetchOnReconnect");
+  });
+
   test("loads the health status from the contract-driven client via the /api prefix", async ({
     page,
   }) => {
