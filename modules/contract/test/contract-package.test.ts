@@ -107,9 +107,13 @@ describe("contract package baseline", () => {
   });
 
   it("keeps CI wired to the package-local test entrypoints", () => {
-    expect(ciWorkflowSource).toContain("run: pnpm test");
+    expect(ciWorkflowSource).toContain("run: pnpm run test:repo");
+    expect(ciWorkflowSource).toContain(
+      "pnpm --filter=!@cz-stack/web -r --workspace-concurrency=1 --if-present run test",
+    );
     expect(ciWorkflowSource).toContain("run: pnpm smoke");
     expect(ciWorkflowSource).toContain("run: pnpm test:web");
+    expect(ciWorkflowSource).not.toContain("run: pnpm test\n");
     expect(ciWorkflowSource).not.toContain(
       "pnpm test:unit && pnpm test:integration",
     );
