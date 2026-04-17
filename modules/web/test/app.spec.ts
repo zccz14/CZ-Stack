@@ -6,6 +6,20 @@ const getImportSpecifiers = (source: string) =>
   );
 
 test.describe("web app", () => {
+  test("wraps the app with QueryClientProvider", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const mainSource = await readFile(
+      `${process.cwd()}/modules/web/src/main.tsx`,
+      "utf8",
+    );
+
+    expect(mainSource).toContain("@tanstack/react-query");
+    expect(mainSource).toContain("./lib/query-client.js");
+    expect(mainSource).toContain(
+      "<QueryClientProvider client={webQueryClient}>",
+    );
+  });
+
   test("keeps the web client as a contract-client fetch pass-through", async () => {
     const { readFile } = await import("node:fs/promises");
     const apiClientSource = await readFile(
