@@ -1,3 +1,4 @@
+import { ContractClientError, type HealthError } from "@cz-stack/contract";
 import { useEffect, useState } from "react";
 
 import { createWebApiClient } from "./lib/api-client.js";
@@ -9,6 +10,11 @@ type HealthViewModel =
 
 const defaultApiClient = createWebApiClient();
 
+const fallbackError: HealthError = {
+  code: "UNAVAILABLE",
+  message: "unexpected error",
+};
+
 export const App = () => {
   const [health, setHealth] = useState<HealthViewModel>({ state: "loading" });
 
@@ -16,24 +22,30 @@ export const App = () => {
     let cancelled = false;
 
     const loadHealth = async () => {
-      const result = await defaultApiClient.getHealth();
+      try {
+        const response = await defaultApiClient.getHealth();
 
-      if (cancelled) {
-        return;
-      }
+        if (cancelled) {
+          return;
+        }
 
-      if (result.status === "success") {
         setHealth({
           state: "success",
-          healthStatus: result.response.status,
+          healthStatus: response.status,
         });
-        return;
-      }
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
 
-      setHealth({
-        state: "error",
-        message: `API unavailable: ${result.error.message}`,
-      });
+        const healthError =
+          error instanceof ContractClientError ? error.error : fallbackError;
+
+        setHealth({
+          state: "error",
+          message: `API unavailable: ${healthError.message}`,
+        });
+      }
     };
 
     void loadHealth();
