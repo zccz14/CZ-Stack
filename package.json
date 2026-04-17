@@ -22,13 +22,13 @@
     "test:repo": "pnpm exec vitest run --config vitest.workspace.ts --project repo",
     "test:type": "pnpm run typecheck && pnpm -r --if-present run test:type",
     "test:lint": "pnpm run lint && pnpm -r --if-present run test:lint",
-    "test:smoke": "pnpm --filter ./modules/cli run test:smoke",
-    "test:web": "pnpm --filter ./modules/web run test:web",
-    "test": "pnpm run test:repo && pnpm -r --if-present run test",
+    "test:smoke": "pnpm -r --if-present run test:smoke",
+    "test:web": "pnpm -r --if-present run test:web",
+    "test": "pnpm run test:repo && pnpm -r --workspace-concurrency=1 --if-present run test",
     "build": "pnpm -r --if-present build",
     "gcm": "git fetch origin && git checkout origin/main",
     "smoke": "pnpm run test:smoke",
-    "validate": "pnpm test:lint && pnpm test:type && pnpm test",
+    "validate": "pnpm run test:type && pnpm run test:lint && pnpm run test && pnpm run build && pnpm run openapi:check",
     "version-packages": "pnpm exec changeset version"
   },
   "devDependencies": {

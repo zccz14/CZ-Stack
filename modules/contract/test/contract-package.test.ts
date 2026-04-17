@@ -67,16 +67,28 @@ describe("contract package baseline", () => {
   it("publishes unified root validation entrypoints", async () => {
     await expect(access(vitestWorkspaceUrl)).resolves.toBeUndefined();
     await expect(access(playwrightConfigUrl)).resolves.toBeUndefined();
-    expect(rootPackage.scripts).toMatchObject({
-      "test:repo": expect.any(String),
-      "test:type": expect.any(String),
-      "test:lint": expect.any(String),
-      "test:smoke": expect.any(String),
-      "test:web": expect.any(String),
-      test: expect.stringContaining("pnpm run test:repo"),
-      smoke: expect.stringContaining("pnpm run test:smoke"),
-      validate: expect.stringContaining("pnpm test"),
-    });
+    expect(rootPackage.scripts["test:repo"]).toBe(
+      "pnpm exec vitest run --config vitest.workspace.ts --project repo",
+    );
+    expect(rootPackage.scripts["test:type"]).toBe(
+      "pnpm run typecheck && pnpm -r --if-present run test:type",
+    );
+    expect(rootPackage.scripts["test:lint"]).toBe(
+      "pnpm run lint && pnpm -r --if-present run test:lint",
+    );
+    expect(rootPackage.scripts["test:smoke"]).toBe(
+      "pnpm -r --if-present run test:smoke",
+    );
+    expect(rootPackage.scripts["test:web"]).toBe(
+      "pnpm -r --if-present run test:web",
+    );
+    expect(rootPackage.scripts.test).toBe(
+      "pnpm run test:repo && pnpm -r --workspace-concurrency=1 --if-present run test",
+    );
+    expect(rootPackage.scripts.smoke).toBe("pnpm run test:smoke");
+    expect(rootPackage.scripts.validate).toBe(
+      "pnpm run test:type && pnpm run test:lint && pnpm run test && pnpm run build && pnpm run openapi:check",
+    );
     expect(rootPackage.scripts).not.toHaveProperty("test:unit");
     expect(rootPackage.scripts).not.toHaveProperty("test:integration");
     expect(rootPackage.scripts).not.toHaveProperty("test:e2e");
