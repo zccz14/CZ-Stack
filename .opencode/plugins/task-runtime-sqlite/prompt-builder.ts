@@ -1,12 +1,22 @@
 import type { TaskRecord } from "./database.js";
 
+const buildCodeFence = (value: string) => {
+  const backtickRuns = value.match(/`+/g) ?? [];
+  const longestRun = backtickRuns.reduce(
+    (max, run) => Math.max(max, run.length),
+    0,
+  );
+
+  return "`".repeat(Math.max(3, longestRun + 1));
+};
+
 const formatTaskSnapshot = (task: TaskRecord) =>
   [
     `task_id: ${task.task_id}`,
     "task_spec:",
-    "```text",
+    `${buildCodeFence(task.task_spec)}text`,
     task.task_spec,
-    "```",
+    buildCodeFence(task.task_spec),
     `status: ${task.status ?? "unknown"}`,
     `worktree_path: ${task.worktree_path ?? "not set"}`,
     `pull_request_url: ${task.pull_request_url ?? "not set"}`,

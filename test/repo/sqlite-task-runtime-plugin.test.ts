@@ -584,6 +584,26 @@ describe("sqlite task runtime plugin", () => {
     expect(prompt).toContain("```\nstatus: running");
   });
 
+  it("uses a stable fence when task specs contain triple backticks", () => {
+    const task = {
+      task_id: "task-1",
+      task_spec: ["Before fence", "```", "Inside spec fence"].join("\n"),
+      session_id: "session-1",
+      worktree_path: "/repo/.worktrees/task-1",
+      pull_request_url: null,
+      status: "running",
+      done: false,
+      updated_at: "2026-04-18T12:34:56.000Z",
+    } satisfies TaskRecord;
+
+    const prompt = buildInitialTaskPrompt(task);
+
+    expect(prompt).toContain(
+      "task_spec:\n````text\nBefore fence\n```\nInside spec fence\n````",
+    );
+    expect(prompt).toContain("````\nstatus: running");
+  });
+
   it("exposes only status in the mark-task-status schema", async () => {
     const { createSqliteTaskRuntimePlugin } = await import(
       "../../.opencode/plugins/task-runtime-sqlite.ts"
