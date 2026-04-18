@@ -5,18 +5,20 @@ const INCOMPATIBLE_TASKS_TABLE_ERROR =
   "Existing tasks table schema is incompatible with sqlite task runtime";
 
 const REQUIRED_TASK_COLUMNS = [
-  ["task_id", "TEXT"],
-  ["task_spec", "TEXT"],
-  ["session_id", "TEXT"],
-  ["worktree_path", "TEXT"],
-  ["pull_request_url", "TEXT"],
-  ["status", "TEXT"],
-  ["done", "INTEGER"],
-  ["updated_at", "TEXT"],
+  { name: "task_id", type: "TEXT" },
+  { name: "task_spec", type: "TEXT" },
+  { name: "session_id", type: "TEXT" },
+  { name: "worktree_path", type: "TEXT" },
+  { name: "pull_request_url", type: "TEXT" },
+  { name: "status", type: "TEXT" },
+  { name: "done", type: "INTEGER", notNull: true, defaultValue: "0" },
+  { name: "updated_at", type: "TEXT" },
 ] as const;
 
 type TableInfoRow = {
+  defaultValue: string | null;
   name: string;
+  notNull: boolean;
   type: string;
 };
 
@@ -40,7 +42,12 @@ const assertTasksTableSchema = (database: DatabaseSync) => {
     .prepare(`PRAGMA table_info('tasks')`)
     .all()
     .map((row) => ({
+      defaultValue:
+        (row as Record<string, unknown>).dflt_value === null
+          ? null
+          : String((row as Record<string, unknown>).dflt_value),
       name: String((row as Record<string, unknown>).name),
+      notNull: Boolean(Number((row as Record<string, unknown>).notnull)),
       type: String((row as Record<string, unknown>).type).toUpperCase(),
     })) satisfies TableInfoRow[];
 
@@ -49,10 +56,26 @@ const assertTasksTableSchema = (database: DatabaseSync) => {
     return;
   }
 
-  const columnTypes = new Map(columns.map((column) => [column.name, column.type]));
+  const columnByName = new Map(columns.map((column) => [column.name, column]));
 
-  for (const [name, type] of REQUIRED_TASK_COLUMNS) {
-    if (columnTypes.get(name) !== type) {
+  for (const requirement of REQUIRED_TASK_COLUMNS) {
+    const column = columnByName.get(requirement.name);
+
+    if (!column || column.type !== requirement.type) {
+      throw new Error(INCOMPATIBLE_TASKS_TABLE_ERROR);
+    }
+
+    if (
+      requirement.notNull !== undefined &&
+      column.notNull !== requirement.notNull
+    ) {
+      throw new Error(INCOMPATIBLE_TASKS_TABLE_ERROR);
+    }
+
+    if (
+      requirement.defaultValue !== undefined &&
+      column.defaultValue !== requirement.defaultValue
+    ) {
       throw new Error(INCOMPATIBLE_TASKS_TABLE_ERROR);
     }
   }

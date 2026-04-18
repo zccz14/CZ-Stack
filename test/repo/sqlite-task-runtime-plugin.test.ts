@@ -241,7 +241,7 @@ describe("sqlite task runtime plugin", () => {
     }
   });
 
-  it("fails fast when an existing tasks table schema is incompatible", async () => {
+  it("rejects an existing tasks table missing done not-null default contract", async () => {
     const emptyProject = await createEmptyProjectDir("incompatible-tasks-schema");
 
     try {
@@ -252,7 +252,14 @@ describe("sqlite task runtime plugin", () => {
       try {
         database.exec(`
           CREATE TABLE tasks (
-            task_id TEXT NOT NULL
+            task_id TEXT NOT NULL,
+            task_spec TEXT NOT NULL,
+            session_id TEXT,
+            worktree_path TEXT,
+            pull_request_url TEXT,
+            status TEXT,
+            done INTEGER,
+            updated_at TEXT
           )
         `);
       } finally {
