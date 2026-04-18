@@ -233,9 +233,31 @@ describe("sqlite task runtime plugin", () => {
           .all();
 
         expect(tables).toEqual([{ name: "tasks" }]);
+
+        database
+          .prepare(
+            `
+              INSERT INTO tasks (task_id, task_spec)
+              VALUES (?, ?)
+            `,
+          )
+          .run("task-1", "bootstrapped task");
       } finally {
         database.close();
       }
+
+      expect(repository.listUnfinishedTasks()).toEqual([
+        {
+          task_id: "task-1",
+          task_spec: "bootstrapped task",
+          session_id: null,
+          worktree_path: null,
+          pull_request_url: null,
+          status: null,
+          done: false,
+          updated_at: null,
+        },
+      ]);
     } finally {
       await emptyProject.cleanup();
     }
