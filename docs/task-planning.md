@@ -25,8 +25,10 @@ Task Planning 的输入通常包括：
 Task Planning 的输出不是仓库内的 spec 文件，而是：
 
 - 一组可批准的 `Task Spec`。
-- 一张软依赖 DAG。
+- 一张初始软依赖 DAG 快照。
 - 一组可直接写入 SQLite `tasks` 表的结构化任务记录。
+
+这里的 DAG 只是规划器时刻的初始视图，不承诺在运行时保持不变。后续执行层和基线验证流程可以根据真实情况重写各个 Task 的 `dependencies`。
 
 在这个阶段，不要求先把 spec / implementation plan 提前写入 repo。只有当某个 Task 真正启动自己的 Task Session、创建了自己的 WorkTree 后，才在该 WorkTree 中产出 repo 内的正式 spec / implementation plan，并和实现一起进入同一个 PR。
 
