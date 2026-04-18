@@ -3,7 +3,10 @@ import type { TaskRecord } from "./database.js";
 const formatTaskSnapshot = (task: TaskRecord) =>
   [
     `task_id: ${task.task_id}`,
-    `task_spec: ${task.task_spec}`,
+    "task_spec:",
+    "```text",
+    task.task_spec,
+    "```",
     `status: ${task.status ?? "unknown"}`,
     `worktree_path: ${task.worktree_path ?? "not set"}`,
     `pull_request_url: ${task.pull_request_url ?? "not set"}`,

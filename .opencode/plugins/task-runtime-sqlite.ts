@@ -1,4 +1,8 @@
-import { createTaskRepository } from "./task-runtime-sqlite/task-repository.js";
+import {
+  createTaskRepository,
+  TASK_STATUSES,
+  type TaskStatus,
+} from "./task-runtime-sqlite/task-repository.js";
 
 export type SqliteTaskRuntimePluginOptions = {
   projectDir: string;
@@ -27,8 +31,8 @@ const createTaskBoundTools = (options: SqliteTaskRuntimePluginOptions) => {
         getRepository().getRequiredTaskBySessionID(context.sessionID),
     },
     "mark-task-status": {
-      schema: { status: true },
-      execute: (input: { status: string }, context: ToolContext) =>
+      schema: { status: [...TASK_STATUSES] },
+      execute: (input: { status: TaskStatus }, context: ToolContext) =>
         getRepository().markTaskStatus({
           sessionID: context.sessionID,
           status: input.status,

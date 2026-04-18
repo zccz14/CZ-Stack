@@ -15,9 +15,34 @@ type CreateTaskRepositoryOptions = {
   now: () => string;
 };
 
+export const TASK_STATUSES = [
+  "created",
+  "running",
+  "outbound",
+  "pr_following",
+  "closing",
+  "succeeded",
+  "failed",
+] as const;
+
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+const TERMINAL_TASK_STATUSES = new Set<TaskStatus>(["succeeded", "failed"]);
+
+const isTaskStatus = (status: string): status is TaskStatus =>
+  TASK_STATUSES.includes(status as TaskStatus);
+
+const assertTaskStatus = (status: string): TaskStatus => {
+  if (!isTaskStatus(status)) {
+    throw new Error(`Unsupported task status: ${status}`);
+  }
+
+  return status;
+};
+
 type MarkTaskStatusInput = {
   sessionID: string;
-  status: string;
+  status: TaskStatus;
 };
 
 type SetupWorktreePathInput = {
@@ -217,7 +242,19 @@ export const createTaskRepository = ({
 
     markTaskStatus({ sessionID, status }) {
       const task = this.getRequiredTaskBySessionID(sessionID);
-      const done = status === "succeeded" || status === "failed";
+      const nextStatus = assertTaskStatus(status);
+
+      if (
+        task.status !== null &&
+        TERMINAL_TASK_STATUSES.has(assertTaskStatus(task.status)) &&
+        !TERMINAL_TASK_STATUSES.has(nextStatus)
+      ) {
+        throw new Error(
+          "Cannot move terminal task back to non-terminal status",
+        );
+      }
+
+      const done = TERMINAL_TASK_STATUSES.has(nextStatus);
 
       updateTask(
         task.task_id,
@@ -226,7 +263,7 @@ export const createTaskRepository = ({
           SET status = ?, done = ?, updated_at = ?
           WHERE task_id = ?
         `,
-        status,
+        nextStatus,
         done ? 1 : 0,
       );
     },
