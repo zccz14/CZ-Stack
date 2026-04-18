@@ -494,6 +494,80 @@ describe("sqlite task runtime plugin", () => {
     }
   });
 
+  it("rejects overwriting succeeded with failed", async () => {
+    const taskDatabase = await createTaskDatabase("reject-succeeded-to-failed");
+
+    try {
+      const repository = createTaskRepository({
+        now: () => "2026-04-18T12:34:56.000Z",
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-1",
+          task_spec: "one",
+          done: 1,
+          status: "succeeded",
+          session_id: "session-1",
+          updated_at: "2026-04-18T00:00:00.000Z",
+        },
+      ]);
+
+      expect(() =>
+        repository.markTaskStatus({
+          sessionID: "session-1",
+          status: "failed",
+        }),
+      ).toThrow("Cannot overwrite terminal task status");
+
+      expect(repository.getRequiredTaskBySessionID("session-1")).toMatchObject({
+        status: "succeeded",
+        done: true,
+        updated_at: "2026-04-18T00:00:00.000Z",
+      });
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
+  it("rejects overwriting failed with succeeded", async () => {
+    const taskDatabase = await createTaskDatabase("reject-failed-to-succeeded");
+
+    try {
+      const repository = createTaskRepository({
+        now: () => "2026-04-18T12:34:56.000Z",
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-1",
+          task_spec: "one",
+          done: 1,
+          status: "failed",
+          session_id: "session-1",
+          updated_at: "2026-04-18T00:00:00.000Z",
+        },
+      ]);
+
+      expect(() =>
+        repository.markTaskStatus({
+          sessionID: "session-1",
+          status: "succeeded",
+        }),
+      ).toThrow("Cannot overwrite terminal task status");
+
+      expect(repository.getRequiredTaskBySessionID("session-1")).toMatchObject({
+        status: "failed",
+        done: true,
+        updated_at: "2026-04-18T00:00:00.000Z",
+      });
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
   it("stores worktree path and pull request url for the current session", async () => {
     const taskDatabase = await createTaskDatabase("runtime-artifacts");
 

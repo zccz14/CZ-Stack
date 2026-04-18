@@ -243,15 +243,25 @@ export const createTaskRepository = ({
     markTaskStatus({ sessionID, status }) {
       const task = this.getRequiredTaskBySessionID(sessionID);
       const nextStatus = assertTaskStatus(status);
+      const currentStatus =
+        task.status === null ? null : assertTaskStatus(task.status);
 
       if (
-        task.status !== null &&
-        TERMINAL_TASK_STATUSES.has(assertTaskStatus(task.status)) &&
+        currentStatus !== null &&
+        TERMINAL_TASK_STATUSES.has(currentStatus) &&
         !TERMINAL_TASK_STATUSES.has(nextStatus)
       ) {
         throw new Error(
           "Cannot move terminal task back to non-terminal status",
         );
+      }
+
+      if (
+        currentStatus !== null &&
+        TERMINAL_TASK_STATUSES.has(currentStatus) &&
+        currentStatus !== nextStatus
+      ) {
+        throw new Error("Cannot overwrite terminal task status");
       }
 
       const done = TERMINAL_TASK_STATUSES.has(nextStatus);
