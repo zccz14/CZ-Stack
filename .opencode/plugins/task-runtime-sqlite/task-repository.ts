@@ -15,12 +15,30 @@ type CreateTaskRepositoryOptions = {
   now: () => string;
 };
 
+type MarkTaskStatusInput = {
+  sessionID: string;
+  status: string;
+};
+
+type SetupWorktreePathInput = {
+  sessionID: string;
+  worktreePath: string;
+};
+
+type SetupPullRequestURLInput = {
+  sessionID: string;
+  pullRequestURL: string;
+};
+
 export type TaskRepository = {
   listUnfinishedTasks(): TaskRecord[];
   listProcessingTasks(): ProcessingTaskRecord[];
   getTaskBySessionID(sessionID: string): TaskRecord | undefined;
   getRequiredTaskBySessionID(sessionID: string): TaskRecord;
   assignSession(taskID: string, sessionID: string): void;
+  markTaskStatus(input: MarkTaskStatusInput): void;
+  setupWorktreePath(input: SetupWorktreePathInput): void;
+  setupPullRequestURL(input: SetupPullRequestURLInput): void;
 };
 
 const mapTaskRecord = (row: Record<string, unknown>): TaskRecord => ({
@@ -81,13 +99,28 @@ const getTasksBySessionID = (
 export const createTaskRepository = ({
   projectDir,
   now,
-}: CreateTaskRepositoryOptions): TaskRepository => ({
-  listUnfinishedTasks() {
+}: CreateTaskRepositoryOptions): TaskRepository => {
+  const updateTask = (
+    taskID: string,
+    query: string,
+    ...params: Array<string | number | null>
+  ) => {
     const database = openTaskRuntimeDatabase(projectDir);
 
     try {
-      const statement = database.prepare(
-        `
+      database.prepare(query).run(...params, now(), taskID);
+    } finally {
+      database.close();
+    }
+  };
+
+  return {
+    listUnfinishedTasks() {
+      const database = openTaskRuntimeDatabase(projectDir);
+
+      try {
+        const statement = database.prepare(
+          `
           SELECT
             task_id,
             task_spec,
@@ -101,22 +134,22 @@ export const createTaskRepository = ({
           WHERE done = 0
           ORDER BY task_id
         `,
-      );
+        );
 
-      return statement
-        .all()
-        .map((row) => mapTaskRecord(row as Record<string, unknown>));
-    } finally {
-      database.close();
-    }
-  },
+        return statement
+          .all()
+          .map((row) => mapTaskRecord(row as Record<string, unknown>));
+      } finally {
+        database.close();
+      }
+    },
 
-  listProcessingTasks() {
-    const database = openTaskRuntimeDatabase(projectDir);
+    listProcessingTasks() {
+      const database = openTaskRuntimeDatabase(projectDir);
 
-    try {
-      const statement = database.prepare(
-        `
+      try {
+        const statement = database.prepare(
+          `
           SELECT
             task_id,
             session_id,
@@ -128,55 +161,102 @@ export const createTaskRepository = ({
           WHERE done = 0
           ORDER BY task_id
         `,
-      );
+        );
 
-      return statement
-        .all()
-        .map((row) => mapProcessingTaskRecord(row as Record<string, unknown>));
-    } finally {
-      database.close();
-    }
-  },
+        return statement
+          .all()
+          .map((row) =>
+            mapProcessingTaskRecord(row as Record<string, unknown>),
+          );
+      } finally {
+        database.close();
+      }
+    },
 
-  getTaskBySessionID(sessionID) {
-    const matches = getTasksBySessionID(projectDir, sessionID);
+    getTaskBySessionID(sessionID) {
+      const matches = getTasksBySessionID(projectDir, sessionID);
 
-    if (matches.length > 1) {
-      throw new Error(`Multiple tasks are bound to session ${sessionID}`);
-    }
+      if (matches.length > 1) {
+        throw new Error(`Multiple tasks are bound to session ${sessionID}`);
+      }
 
-    return matches[0];
-  },
+      return matches[0];
+    },
 
-  getRequiredTaskBySessionID(sessionID) {
-    const matches = getTasksBySessionID(projectDir, sessionID);
+    getRequiredTaskBySessionID(sessionID) {
+      const matches = getTasksBySessionID(projectDir, sessionID);
 
-    if (matches.length === 0) {
-      throw new Error("Current session is not bound to a task");
-    }
+      if (matches.length === 0) {
+        throw new Error("Current session is not bound to a task");
+      }
 
-    if (matches.length > 1) {
-      throw new Error(`Multiple tasks are bound to session ${sessionID}`);
-    }
+      if (matches.length > 1) {
+        throw new Error(`Multiple tasks are bound to session ${sessionID}`);
+      }
 
-    return matches[0];
-  },
+      return matches[0];
+    },
 
-  assignSession(taskID, sessionID) {
-    const database = openTaskRuntimeDatabase(projectDir);
+    assignSession(taskID, sessionID) {
+      const database = openTaskRuntimeDatabase(projectDir);
 
-    try {
-      const statement = database.prepare(
-        `
+      try {
+        const statement = database.prepare(
+          `
           UPDATE tasks
           SET session_id = ?, updated_at = ?
           WHERE task_id = ?
         `,
-      );
+        );
 
-      statement.run(sessionID, now(), taskID);
-    } finally {
-      database.close();
-    }
-  },
-});
+        statement.run(sessionID, now(), taskID);
+      } finally {
+        database.close();
+      }
+    },
+
+    markTaskStatus({ sessionID, status }) {
+      const task = this.getRequiredTaskBySessionID(sessionID);
+      const done = status === "succeeded" || status === "failed";
+
+      updateTask(
+        task.task_id,
+        `
+          UPDATE tasks
+          SET status = ?, done = ?, updated_at = ?
+          WHERE task_id = ?
+        `,
+        status,
+        done ? 1 : 0,
+      );
+    },
+
+    setupWorktreePath({ sessionID, worktreePath }) {
+      const task = this.getRequiredTaskBySessionID(sessionID);
+
+      updateTask(
+        task.task_id,
+        `
+          UPDATE tasks
+          SET worktree_path = ?, updated_at = ?
+          WHERE task_id = ?
+        `,
+        worktreePath,
+      );
+    },
+
+    setupPullRequestURL({ sessionID, pullRequestURL }) {
+      const task = this.getRequiredTaskBySessionID(sessionID);
+
+      updateTask(
+        task.task_id,
+        `
+          UPDATE tasks
+          SET pull_request_url = ?, updated_at = ?
+          WHERE task_id = ?
+        `,
+        pullRequestURL,
+      );
+    },
+  };
+};

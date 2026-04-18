@@ -7,6 +7,10 @@ import {
   openTaskRuntimeDatabase,
   type TaskRecord,
 } from "../../.opencode/plugins/task-runtime-sqlite/database.ts";
+import {
+  buildFollowUpTaskPrompt,
+  buildInitialTaskPrompt,
+} from "../../.opencode/plugins/task-runtime-sqlite/prompt-builder.ts";
 import { createTaskRepository } from "../../.opencode/plugins/task-runtime-sqlite/task-repository.ts";
 
 const createTaskDatabase = async (caseName: string) => {
@@ -337,6 +341,237 @@ describe("sqlite task runtime plugin", () => {
         session_id: "session-1",
         task_id: "task-1",
         updated_at: "2026-04-18T12:34:56.000Z",
+      });
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
+  it("marks terminal statuses as done and refreshes updated_at", async () => {
+    const taskDatabase = await createTaskDatabase("mark-terminal-status");
+
+    try {
+      const repository = createTaskRepository({
+        now: () => "2026-04-18T12:34:56.000Z",
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-1",
+          task_spec: "one",
+          done: 0,
+          status: "running",
+          session_id: "session-1",
+        },
+      ]);
+
+      repository.markTaskStatus({
+        sessionID: "session-1",
+        status: "succeeded",
+      });
+
+      expect(repository.getRequiredTaskBySessionID("session-1")).toMatchObject({
+        status: "succeeded",
+        done: true,
+        updated_at: "2026-04-18T12:34:56.000Z",
+      });
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
+  it("keeps non-terminal statuses unfinished", async () => {
+    const taskDatabase = await createTaskDatabase("mark-non-terminal-status");
+
+    try {
+      const repository = createTaskRepository({
+        now: () => "2026-04-18T12:34:56.000Z",
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-1",
+          task_spec: "one",
+          done: 0,
+          status: "running",
+          session_id: "session-1",
+        },
+      ]);
+
+      repository.markTaskStatus({
+        sessionID: "session-1",
+        status: "pr_following",
+      });
+
+      expect(repository.getRequiredTaskBySessionID("session-1")).toMatchObject({
+        status: "pr_following",
+        done: false,
+        updated_at: "2026-04-18T12:34:56.000Z",
+      });
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
+  it("stores worktree path and pull request url for the current session", async () => {
+    const taskDatabase = await createTaskDatabase("runtime-artifacts");
+
+    try {
+      const repository = createTaskRepository({
+        now: () => "2026-04-18T12:34:56.000Z",
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-1",
+          task_spec: "one",
+          done: 0,
+          status: "running",
+          session_id: "session-1",
+        },
+      ]);
+
+      repository.setupWorktreePath({
+        sessionID: "session-1",
+        worktreePath: "/repo/.worktrees/task-1",
+      });
+      repository.setupPullRequestURL({
+        sessionID: "session-1",
+        pullRequestURL: "https://github.com/acme/repo/pull/1",
+      });
+
+      expect(repository.getRequiredTaskBySessionID("session-1")).toMatchObject({
+        worktree_path: "/repo/.worktrees/task-1",
+        pull_request_url: "https://github.com/acme/repo/pull/1",
+        updated_at: "2026-04-18T12:34:56.000Z",
+      });
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
+  it("builds prompts from task snapshots without sqlite internals", () => {
+    const task = {
+      task_id: "task-1",
+      task_spec: "Fix the failing repo test",
+      session_id: "session-1",
+      worktree_path: "/repo/.worktrees/task-1",
+      pull_request_url: "https://github.com/acme/repo/pull/1",
+      status: "running",
+      done: false,
+      updated_at: "2026-04-18T12:34:56.000Z",
+    } satisfies TaskRecord;
+
+    const initialPrompt = buildInitialTaskPrompt(task);
+    const followUpPrompt = buildFollowUpTaskPrompt(task);
+
+    expect(initialPrompt).toContain("task-1");
+    expect(initialPrompt).toContain("Fix the failing repo test");
+    expect(followUpPrompt).toContain("继续推进当前 Task");
+
+    for (const prompt of [initialPrompt, followUpPrompt]) {
+      expect(prompt).not.toContain("aim.sqlite");
+      expect(prompt).not.toContain("dbPath");
+      expect(prompt).not.toContain("SELECT");
+      expect(prompt).not.toContain("UPDATE tasks");
+    }
+  });
+
+  it("exposes only status in the mark-task-status schema", async () => {
+    const { createSqliteTaskRuntimePlugin } = await import(
+      "../../.opencode/plugins/task-runtime-sqlite.ts"
+    );
+    const plugin = createSqliteTaskRuntimePlugin({ projectDir: process.cwd() });
+    const markTaskStatusTool = plugin.tools["mark-task-status"] as {
+      schema?: Record<string, unknown>;
+    };
+
+    expect(Object.keys(markTaskStatusTool.schema ?? {})).toEqual(["status"]);
+    expect(markTaskStatusTool.schema).not.toHaveProperty("task_id");
+    expect(markTaskStatusTool.schema).not.toHaveProperty("done");
+    expect(markTaskStatusTool.schema).not.toHaveProperty("updated_at");
+  });
+
+  it("binds task-bound tools to the current session id", async () => {
+    const taskDatabase = await createTaskDatabase("task-bound-tools");
+
+    try {
+      const { createSqliteTaskRuntimePlugin } = await import(
+        "../../.opencode/plugins/task-runtime-sqlite.ts"
+      );
+      const plugin = createSqliteTaskRuntimePlugin({
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-1",
+          task_spec: "one",
+          done: 0,
+          status: "running",
+          session_id: "session-1",
+        },
+      ]);
+
+      await (
+        plugin.tools["setup-worktree-path"] as {
+          execute: (
+            input: { worktreePath: string },
+            context: { sessionID: string },
+          ) => Promise<unknown> | unknown;
+        }
+      ).execute(
+        { worktreePath: "/repo/.worktrees/task-1" },
+        { sessionID: "session-1" },
+      );
+
+      await (
+        plugin.tools["setup-pull-request-url"] as {
+          execute: (
+            input: { pullRequestURL: string },
+            context: { sessionID: string },
+          ) => Promise<unknown> | unknown;
+        }
+      ).execute(
+        { pullRequestURL: "https://github.com/acme/repo/pull/1" },
+        { sessionID: "session-1" },
+      );
+
+      expect(
+        await (
+          plugin.tools["get-current-task"] as {
+            execute: (
+              input: Record<string, never>,
+              context: { sessionID: string },
+            ) => Promise<TaskRecord> | TaskRecord;
+          }
+        ).execute({}, { sessionID: "session-1" }),
+      ).toMatchObject({
+        task_id: "task-1",
+        worktree_path: "/repo/.worktrees/task-1",
+        pull_request_url: "https://github.com/acme/repo/pull/1",
+      });
+
+      await (
+        plugin.tools["mark-task-status"] as {
+          execute: (
+            input: { status: string },
+            context: { sessionID: string },
+          ) => Promise<unknown> | unknown;
+        }
+      ).execute({ status: "succeeded" }, { sessionID: "session-1" });
+
+      const repository = createTaskRepository({
+        now: () => "2026-04-18T12:34:56.000Z",
+        projectDir: taskDatabase.projectDir,
+      });
+
+      expect(repository.getRequiredTaskBySessionID("session-1")).toMatchObject({
+        status: "succeeded",
+        done: true,
       });
     } finally {
       await taskDatabase.cleanup();
