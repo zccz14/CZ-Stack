@@ -15,11 +15,12 @@ export const createSqliteTaskRuntimePlugin = ({
   const sessionRuntime = createSessionRuntime();
   const promptBuilder = createPromptBuilder();
 
+  void repository;
+  void sessionRuntime;
+  void promptBuilder;
+
   return {
     name: "sqlite-task-runtime",
-    repository,
-    sessionRuntime,
-    promptBuilder,
     tools: {
       "dispatch-tasks": {},
       "list-processing-tasks": {},
