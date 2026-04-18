@@ -11,6 +11,7 @@ import {
   buildFollowUpTaskPrompt,
   buildInitialTaskPrompt,
 } from "../../.opencode/plugins/task-runtime-sqlite/prompt-builder.ts";
+import { createSessionRuntime } from "../../.opencode/plugins/task-runtime-sqlite/session-runtime.ts";
 import { createTaskRepository } from "../../.opencode/plugins/task-runtime-sqlite/task-repository.ts";
 
 const createTaskDatabase = async (caseName: string) => {
@@ -919,6 +920,170 @@ describe("sqlite task runtime plugin", () => {
     } finally {
       await taskDatabase.cleanup();
     }
+  });
+
+  it("does not keep a new session binding when initial prompt delivery fails", async () => {
+    const taskDatabase = await createTaskDatabase(
+      "dispatch-created-prompt-failure",
+    );
+
+    try {
+      const sessionRuntime = {
+        createSession: vi.fn().mockResolvedValue({ id: "session-3" }),
+        sendPrompt: vi.fn().mockRejectedValue(new Error("prompt failed")),
+      };
+      const { createSqliteTaskRuntimePlugin } = await import(
+        "../../.opencode/plugins/task-runtime-sqlite.ts"
+      );
+      const plugin = createSqliteTaskRuntimePlugin({
+        host: sessionRuntime,
+        projectDir: taskDatabase.projectDir,
+      });
+      const repository = createTaskRepository({
+        now: () => "2026-04-18T12:34:56.000Z",
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-2",
+          task_spec: "Create a fresh session",
+          done: 0,
+          session_id: null,
+          status: "created",
+        },
+      ]);
+
+      await expect(
+        (
+          plugin.tools["dispatch-tasks"] as {
+            execute: () => Promise<unknown>;
+          }
+        ).execute(),
+      ).rejects.toThrow("prompt failed");
+
+      expect(repository.getTaskBySessionID("session-3")).toBeUndefined();
+      expect(repository.listUnfinishedTasks()).toEqual([
+        expect.objectContaining({ session_id: null, task_id: "task-2" }),
+      ]);
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
+  it("does not replace the previous session binding when reclaim prompt delivery fails", async () => {
+    const taskDatabase = await createTaskDatabase(
+      "dispatch-reclaimed-prompt-failure",
+    );
+
+    try {
+      const sessionRuntime = {
+        createSession: vi.fn().mockResolvedValue({ id: "session-2" }),
+        getSession: vi.fn().mockResolvedValue(null),
+        sendPrompt: vi.fn().mockRejectedValue(new Error("prompt failed")),
+      };
+      const { createSqliteTaskRuntimePlugin } = await import(
+        "../../.opencode/plugins/task-runtime-sqlite.ts"
+      );
+      const plugin = createSqliteTaskRuntimePlugin({
+        host: sessionRuntime,
+        projectDir: taskDatabase.projectDir,
+      });
+      const repository = createTaskRepository({
+        now: () => "2026-04-18T12:34:56.000Z",
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-1",
+          task_spec: "Resume after session loss",
+          done: 0,
+          session_id: "session-1",
+          status: "running",
+        },
+      ]);
+
+      await expect(
+        (
+          plugin.tools["dispatch-tasks"] as {
+            execute: () => Promise<unknown>;
+          }
+        ).execute(),
+      ).rejects.toThrow("prompt failed");
+
+      expect(repository.getTaskBySessionID("session-2")).toBeUndefined();
+      expect(repository.getTaskBySessionID("session-1")).toEqual(
+        expect.objectContaining({ task_id: "task-1", session_id: "session-1" }),
+      );
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
+  it("dispatches only unfinished tasks at the plugin level", async () => {
+    const taskDatabase = await createTaskDatabase("dispatch-only-unfinished");
+
+    try {
+      const sessionRuntime = {
+        createSession: vi
+          .fn()
+          .mockResolvedValueOnce({ id: "session-1" })
+          .mockResolvedValueOnce({ id: "session-2" }),
+        sendPrompt: vi.fn().mockResolvedValue(undefined),
+      };
+      const { createSqliteTaskRuntimePlugin } = await import(
+        "../../.opencode/plugins/task-runtime-sqlite.ts"
+      );
+      const plugin = createSqliteTaskRuntimePlugin({
+        host: sessionRuntime,
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-1",
+          task_spec: "still running",
+          done: 0,
+          session_id: null,
+          status: "created",
+        },
+        {
+          task_id: "task-2",
+          task_spec: "already finished",
+          done: 1,
+          session_id: null,
+          status: "succeeded",
+        },
+      ]);
+
+      const result = await (
+        plugin.tools["dispatch-tasks"] as {
+          execute: () => Promise<unknown>;
+        }
+      ).execute();
+
+      expect(result).toEqual([
+        { action: "created", sessionID: "session-1", taskID: "task-1" },
+      ]);
+      expect(sessionRuntime.createSession).toHaveBeenCalledTimes(1);
+      expect(sessionRuntime.sendPrompt).toHaveBeenCalledTimes(1);
+      expect(sessionRuntime.sendPrompt).toHaveBeenCalledWith(
+        "session-1",
+        expect.stringContaining("still running"),
+      );
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
+  it("treats a missing getSession host hook as a missing session", async () => {
+    const runtime = createSessionRuntime({
+      createSession: async () => ({ id: "session-1" }),
+      sendPrompt: async () => {},
+    });
+
+    await expect(runtime.getSession("missing-session")).resolves.toBeNull();
   });
 
   it("returns processing task summaries with the required fields", async () => {
