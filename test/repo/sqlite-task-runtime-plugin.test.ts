@@ -1,5 +1,6 @@
 import { access, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -25,18 +26,6 @@ const createTaskDatabase = async (caseName: string) => {
   await mkdir(projectDir, { recursive: true });
 
   const database = openTaskRuntimeDatabase(projectDir);
-  database.exec(`
-    CREATE TABLE tasks (
-      task_id TEXT NOT NULL,
-      task_spec TEXT NOT NULL,
-      session_id TEXT,
-      worktree_path TEXT,
-      pull_request_url TEXT,
-      status TEXT,
-      done INTEGER NOT NULL DEFAULT 0,
-      updated_at TEXT
-    )
-  `);
 
   const seedTasks = (
     tasks: Array<
@@ -76,6 +65,24 @@ const createTaskDatabase = async (caseName: string) => {
   };
 
   return { cleanup, projectDir, seedTasks };
+};
+
+const createEmptyProjectDir = async (caseName: string) => {
+  const projectDir = join(
+    process.cwd(),
+    "test/repo/.tmp/sqlite-task-runtime-plugin",
+    caseName,
+  );
+
+  await rm(projectDir, { force: true, recursive: true });
+  await mkdir(projectDir, { recursive: true });
+
+  return {
+    cleanup: async () => {
+      await rm(projectDir, { force: true, recursive: true });
+    },
+    projectDir,
+  };
 };
 
 describe("sqlite task runtime plugin", () => {
@@ -194,6 +201,104 @@ describe("sqlite task runtime plugin", () => {
     expect(getTaskRuntimeDatabasePath("/repo/worktree")).toBe(
       "/repo/worktree/aim.sqlite",
     );
+  });
+
+  it("bootstraps aim.sqlite and the tasks table for an empty project", async () => {
+    const emptyProject = await createEmptyProjectDir("bootstrap-empty-project");
+
+    try {
+      const repository = createTaskRepository({
+        now: () => "2026-04-18T00:00:00.000Z",
+        projectDir: emptyProject.projectDir,
+      });
+
+      expect(repository.listUnfinishedTasks()).toEqual([]);
+      await expect(
+        access(getTaskRuntimeDatabasePath(emptyProject.projectDir)),
+      ).resolves.toBeUndefined();
+
+      const database = new DatabaseSync(
+        getTaskRuntimeDatabasePath(emptyProject.projectDir),
+      );
+
+      try {
+        const tables = database
+          .prepare(
+            `
+              SELECT name
+              FROM sqlite_master
+              WHERE type = 'table' AND name = 'tasks'
+            `,
+          )
+          .all();
+
+        expect(tables).toEqual([{ name: "tasks" }]);
+
+        database
+          .prepare(
+            `
+              INSERT INTO tasks (task_id, task_spec)
+              VALUES (?, ?)
+            `,
+          )
+          .run("task-1", "bootstrapped task");
+      } finally {
+        database.close();
+      }
+
+      expect(repository.listUnfinishedTasks()).toEqual([
+        {
+          task_id: "task-1",
+          task_spec: "bootstrapped task",
+          session_id: null,
+          worktree_path: null,
+          pull_request_url: null,
+          status: null,
+          done: false,
+          updated_at: null,
+        },
+      ]);
+    } finally {
+      await emptyProject.cleanup();
+    }
+  });
+
+  it("rejects an existing tasks table missing done not-null default contract", async () => {
+    const emptyProject = await createEmptyProjectDir("incompatible-tasks-schema");
+
+    try {
+      const database = new DatabaseSync(
+        getTaskRuntimeDatabasePath(emptyProject.projectDir),
+      );
+
+      try {
+        database.exec(`
+          CREATE TABLE tasks (
+            task_id TEXT NOT NULL,
+            task_spec TEXT NOT NULL,
+            session_id TEXT,
+            worktree_path TEXT,
+            pull_request_url TEXT,
+            status TEXT,
+            done INTEGER,
+            updated_at TEXT
+          )
+        `);
+      } finally {
+        database.close();
+      }
+
+      const repository = createTaskRepository({
+        now: () => "2026-04-18T00:00:00.000Z",
+        projectDir: emptyProject.projectDir,
+      });
+
+      expect(() => repository.listUnfinishedTasks()).toThrow(
+        "Existing tasks table schema is incompatible with sqlite task runtime",
+      );
+    } finally {
+      await emptyProject.cleanup();
+    }
   });
 
   it("lists only unfinished tasks from sqlite", async () => {
@@ -1276,6 +1381,45 @@ describe("sqlite task runtime plugin", () => {
       ]);
     } finally {
       await taskDatabase.cleanup();
+    }
+  });
+
+  it("lets dispatch and list entrypoints run on an empty project", async () => {
+    const emptyProject = await createEmptyProjectDir("plugin-empty-project");
+
+    try {
+      const sessionRuntime = {
+        createSession: vi.fn(),
+        sendPrompt: vi.fn(),
+      };
+      const { createSqliteTaskRuntimePlugin } = await import(
+        "../../.opencode/plugins/task-runtime-sqlite.ts"
+      );
+      const plugin = createSqliteTaskRuntimePlugin({
+        host: sessionRuntime,
+        projectDir: emptyProject.projectDir,
+      });
+
+      expect(
+        (
+          plugin.tools["list-processing-tasks"] as {
+            execute: () => Promise<unknown> | unknown;
+          }
+        ).execute(),
+      ).toEqual([]);
+
+      await expect(
+        (
+          plugin.tools["dispatch-tasks"] as {
+            execute: () => Promise<unknown>;
+          }
+        ).execute(),
+      ).resolves.toEqual([]);
+
+      expect(sessionRuntime.createSession).not.toHaveBeenCalled();
+      expect(sessionRuntime.sendPrompt).not.toHaveBeenCalled();
+    } finally {
+      await emptyProject.cleanup();
     }
   });
 
