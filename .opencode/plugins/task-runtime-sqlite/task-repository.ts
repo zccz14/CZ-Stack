@@ -60,7 +60,7 @@ export type TaskRepository = {
   listProcessingTasks(): ProcessingTaskRecord[];
   getTaskBySessionID(sessionID: string): TaskRecord | undefined;
   getRequiredTaskBySessionID(sessionID: string): TaskRecord;
-  assignSession(taskID: string, sessionID: string): void;
+  assignSession(taskID: string, sessionID: string | null): void;
   markTaskStatus(input: MarkTaskStatusInput): void;
   setupWorktreePath(input: SetupWorktreePathInput): void;
   setupPullRequestURL(input: SetupPullRequestURLInput): void;

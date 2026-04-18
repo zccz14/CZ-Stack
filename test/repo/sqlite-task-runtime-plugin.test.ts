@@ -922,6 +922,78 @@ describe("sqlite task runtime plugin", () => {
     }
   });
 
+  it("marks a dispatched task as succeeded and removes it from processing summaries", async () => {
+    const taskDatabase = await createTaskDatabase(
+      "dispatch-created-then-succeeded",
+    );
+
+    vi.useFakeTimers();
+
+    try {
+      const repository = createTaskRepository({
+        now: () => "2026-04-18T12:35:56.000Z",
+        projectDir: taskDatabase.projectDir,
+      });
+      const sessionRuntime = {
+        createSession: vi.fn().mockResolvedValue({ id: "session-3" }),
+        sendPrompt: vi.fn().mockImplementation(async (sessionID: string) => {
+          expect(
+            repository.getRequiredTaskBySessionID(sessionID),
+          ).toMatchObject({
+            task_id: "task-2",
+            session_id: sessionID,
+          });
+        }),
+      };
+      const { createSqliteTaskRuntimePlugin } = await import(
+        "../../.opencode/plugins/task-runtime-sqlite.ts"
+      );
+      const plugin = createSqliteTaskRuntimePlugin({
+        host: sessionRuntime,
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-2",
+          task_spec: "Create a fresh session",
+          done: 0,
+          session_id: null,
+          status: "created",
+          updated_at: "2026-04-18T10:00:00.000Z",
+        },
+      ]);
+
+      vi.setSystemTime(new Date("2026-04-18T12:34:56.000Z"));
+      await (
+        plugin.tools["dispatch-tasks"] as {
+          execute: () => Promise<unknown>;
+        }
+      ).execute();
+
+      vi.setSystemTime(new Date("2026-04-18T12:35:56.000Z"));
+      await (
+        plugin.tools["mark-task-status"] as {
+          execute: (
+            input: { status: string },
+            context: { sessionID: string },
+          ) => Promise<unknown> | unknown;
+        }
+      ).execute({ status: "succeeded" }, { sessionID: "session-3" });
+
+      expect(repository.getRequiredTaskBySessionID("session-3")).toMatchObject({
+        task_id: "task-2",
+        status: "succeeded",
+        done: true,
+        updated_at: "2026-04-18T12:35:56.000Z",
+      });
+      expect(repository.listProcessingTasks()).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+      await taskDatabase.cleanup();
+    }
+  });
+
   it("does not keep a new session binding when initial prompt delivery fails", async () => {
     const taskDatabase = await createTaskDatabase(
       "dispatch-created-prompt-failure",

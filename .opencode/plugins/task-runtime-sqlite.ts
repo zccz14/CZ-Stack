@@ -66,12 +66,20 @@ const createTaskBoundTools = (options: SqliteTaskRuntimePluginOptions) => {
       }
 
       const session = await sessionRuntime.createSession();
+      const previousSessionID = task.session_id;
 
-      await sessionRuntime.sendPrompt(
-        session.id,
-        buildInitialTaskPrompt({ ...task, session_id: session.id }),
-      );
       repository.assignSession(task.task_id, session.id);
+
+      try {
+        await sessionRuntime.sendPrompt(
+          session.id,
+          buildInitialTaskPrompt({ ...task, session_id: session.id }),
+        );
+      } catch (error) {
+        repository.assignSession(task.task_id, previousSessionID);
+        throw error;
+      }
+
       results.push({
         action: task.session_id ? "reclaimed" : "created",
         sessionID: session.id,
