@@ -721,4 +721,271 @@ describe("sqlite task runtime plugin", () => {
 
     expect(Object.keys(plugin)).toEqual(["name", "tools"]);
   });
+
+  it("continues an existing idle session for an unfinished task", async () => {
+    const taskDatabase = await createTaskDatabase("dispatch-continued-idle");
+
+    try {
+      const sessionRuntime = {
+        createSession: vi.fn(),
+        getSession: vi.fn().mockResolvedValue({ busy: false, id: "session-1" }),
+        sendPrompt: vi.fn().mockResolvedValue(undefined),
+      };
+      const { createSqliteTaskRuntimePlugin } = await import(
+        "../../.opencode/plugins/task-runtime-sqlite.ts"
+      );
+      const plugin = createSqliteTaskRuntimePlugin({
+        host: sessionRuntime,
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-1",
+          task_spec: "Continue the queued task",
+          done: 0,
+          session_id: "session-1",
+          status: "running",
+        },
+      ]);
+
+      const result = await (
+        plugin.tools["dispatch-tasks"] as {
+          execute: () => Promise<unknown>;
+        }
+      ).execute();
+
+      expect(result).toEqual([
+        { action: "continued", sessionID: "session-1", taskID: "task-1" },
+      ]);
+      expect(sessionRuntime.getSession).toHaveBeenCalledWith("session-1");
+      expect(sessionRuntime.createSession).not.toHaveBeenCalled();
+      expect(sessionRuntime.sendPrompt).toHaveBeenCalledWith(
+        "session-1",
+        expect.stringContaining("继续推进当前 Task"),
+      );
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
+  it("skips a busy session without sending a duplicate prompt", async () => {
+    const taskDatabase = await createTaskDatabase("dispatch-skipped-busy");
+
+    try {
+      const sessionRuntime = {
+        createSession: vi.fn(),
+        getSession: vi.fn().mockResolvedValue({ busy: true, id: "session-1" }),
+        sendPrompt: vi.fn().mockResolvedValue(undefined),
+      };
+      const { createSqliteTaskRuntimePlugin } = await import(
+        "../../.opencode/plugins/task-runtime-sqlite.ts"
+      );
+      const plugin = createSqliteTaskRuntimePlugin({
+        host: sessionRuntime,
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-1",
+          task_spec: "Keep waiting",
+          done: 0,
+          session_id: "session-1",
+          status: "running",
+        },
+      ]);
+
+      const result = await (
+        plugin.tools["dispatch-tasks"] as {
+          execute: () => Promise<unknown>;
+        }
+      ).execute();
+
+      expect(result).toEqual([
+        {
+          action: "skipped_busy",
+          sessionID: "session-1",
+          taskID: "task-1",
+        },
+      ]);
+      expect(sessionRuntime.createSession).not.toHaveBeenCalled();
+      expect(sessionRuntime.sendPrompt).not.toHaveBeenCalled();
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
+  it("reclaims a task when its previous session no longer exists", async () => {
+    const taskDatabase = await createTaskDatabase("dispatch-reclaimed");
+
+    try {
+      const sessionRuntime = {
+        createSession: vi.fn().mockResolvedValue({ id: "session-2" }),
+        getSession: vi.fn().mockResolvedValue(null),
+        sendPrompt: vi.fn().mockResolvedValue(undefined),
+      };
+      const { createSqliteTaskRuntimePlugin } = await import(
+        "../../.opencode/plugins/task-runtime-sqlite.ts"
+      );
+      const plugin = createSqliteTaskRuntimePlugin({
+        host: sessionRuntime,
+        projectDir: taskDatabase.projectDir,
+      });
+      const repository = createTaskRepository({
+        now: () => "2026-04-18T12:34:56.000Z",
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-1",
+          task_spec: "Resume after session loss",
+          done: 0,
+          session_id: "session-1",
+          status: "running",
+        },
+      ]);
+
+      const result = await (
+        plugin.tools["dispatch-tasks"] as {
+          execute: () => Promise<unknown>;
+        }
+      ).execute();
+
+      expect(result).toEqual([
+        { action: "reclaimed", sessionID: "session-2", taskID: "task-1" },
+      ]);
+      expect(repository.getTaskBySessionID("session-2")?.task_id).toBe(
+        "task-1",
+      );
+      expect(sessionRuntime.sendPrompt).toHaveBeenCalledWith(
+        "session-2",
+        expect.stringContaining("Resume after session loss"),
+      );
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
+  it("creates and assigns a new session for an unbound unfinished task", async () => {
+    const taskDatabase = await createTaskDatabase("dispatch-created");
+
+    try {
+      const sessionRuntime = {
+        createSession: vi.fn().mockResolvedValue({ id: "session-3" }),
+        getSession: vi.fn(),
+        sendPrompt: vi.fn().mockResolvedValue(undefined),
+      };
+      const { createSqliteTaskRuntimePlugin } = await import(
+        "../../.opencode/plugins/task-runtime-sqlite.ts"
+      );
+      const plugin = createSqliteTaskRuntimePlugin({
+        host: sessionRuntime,
+        projectDir: taskDatabase.projectDir,
+      });
+      const repository = createTaskRepository({
+        now: () => "2026-04-18T12:34:56.000Z",
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-2",
+          task_spec: "Create a fresh session",
+          done: 0,
+          session_id: null,
+          status: "created",
+        },
+      ]);
+
+      const result = await (
+        plugin.tools["dispatch-tasks"] as {
+          execute: () => Promise<unknown>;
+        }
+      ).execute();
+
+      expect(result).toEqual([
+        { action: "created", sessionID: "session-3", taskID: "task-2" },
+      ]);
+      expect(sessionRuntime.getSession).not.toHaveBeenCalled();
+      expect(repository.getTaskBySessionID("session-3")?.task_id).toBe(
+        "task-2",
+      );
+      expect(sessionRuntime.sendPrompt).toHaveBeenCalledWith(
+        "session-3",
+        expect.stringContaining("Create a fresh session"),
+      );
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
+  it("returns processing task summaries with the required fields", async () => {
+    const taskDatabase = await createTaskDatabase(
+      "dispatch-processing-summary",
+    );
+
+    try {
+      const { createSqliteTaskRuntimePlugin } = await import(
+        "../../.opencode/plugins/task-runtime-sqlite.ts"
+      );
+      const plugin = createSqliteTaskRuntimePlugin({
+        projectDir: taskDatabase.projectDir,
+      });
+
+      taskDatabase.seedTasks([
+        {
+          task_id: "task-1",
+          task_spec: "one",
+          session_id: "session-1",
+          worktree_path: "/repo/.worktrees/task-1",
+          pull_request_url: "https://github.com/acme/repo/pull/1",
+          status: "running",
+          done: 0,
+          updated_at: "2026-04-18T01:00:00.000Z",
+        },
+      ]);
+
+      expect(
+        (
+          plugin.tools["list-processing-tasks"] as {
+            execute: () => Promise<unknown> | unknown;
+          }
+        ).execute(),
+      ).toEqual([
+        {
+          pull_request_url: "https://github.com/acme/repo/pull/1",
+          session_id: "session-1",
+          status: "running",
+          task_id: "task-1",
+          updated_at: "2026-04-18T01:00:00.000Z",
+          worktree_path: "/repo/.worktrees/task-1",
+        },
+      ]);
+    } finally {
+      await taskDatabase.cleanup();
+    }
+  });
+
+  it("keeps follow-up prompts focused on continuing the current task", () => {
+    const task = {
+      task_id: "task-1",
+      task_spec: "Drive the current task forward",
+      session_id: "session-1",
+      worktree_path: "/repo/.worktrees/task-1",
+      pull_request_url: "https://github.com/acme/repo/pull/1",
+      status: "running",
+      done: false,
+      updated_at: "2026-04-18T12:34:56.000Z",
+    } satisfies TaskRecord;
+
+    const prompt = buildFollowUpTaskPrompt(task);
+
+    expect(prompt).toContain("继续推进当前 Task");
+    expect(prompt).toContain("task-1");
+    expect(prompt).not.toContain("session_id =");
+    expect(prompt).not.toContain("tasks");
+    expect(prompt).not.toContain("aim.sqlite");
+  });
 });

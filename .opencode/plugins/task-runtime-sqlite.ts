@@ -1,10 +1,19 @@
 import {
+  buildFollowUpTaskPrompt,
+  buildInitialTaskPrompt,
+} from "./task-runtime-sqlite/prompt-builder.js";
+import {
+  createSessionRuntime,
+  type SessionRuntimeHost,
+} from "./task-runtime-sqlite/session-runtime.js";
+import {
   createTaskRepository,
   TASK_STATUSES,
   type TaskStatus,
 } from "./task-runtime-sqlite/task-repository.js";
 
 export type SqliteTaskRuntimePluginOptions = {
+  host?: SessionRuntimeHost;
   projectDir: string;
 };
 
@@ -18,9 +27,66 @@ const createTaskBoundTools = (options: SqliteTaskRuntimePluginOptions) => {
       now: () => new Date().toISOString(),
       projectDir: options.projectDir,
     });
+  const getSessionRuntime = () => createSessionRuntime(options.host);
+
+  const dispatchTasks = async () => {
+    const repository = getRepository();
+    const sessionRuntime = getSessionRuntime();
+    const results: Array<{
+      action: "continued" | "created" | "reclaimed" | "skipped_busy";
+      sessionID: string;
+      taskID: string;
+    }> = [];
+
+    for (const task of repository.listUnfinishedTasks()) {
+      if (task.session_id) {
+        const session = await sessionRuntime.getSession(task.session_id);
+
+        if (session?.busy) {
+          results.push({
+            action: "skipped_busy",
+            sessionID: task.session_id,
+            taskID: task.task_id,
+          });
+          continue;
+        }
+
+        if (session) {
+          await sessionRuntime.sendPrompt(
+            session.id,
+            buildFollowUpTaskPrompt(task),
+          );
+          results.push({
+            action: "continued",
+            sessionID: session.id,
+            taskID: task.task_id,
+          });
+          continue;
+        }
+      }
+
+      const session = await sessionRuntime.createSession();
+
+      repository.assignSession(task.task_id, session.id);
+      await sessionRuntime.sendPrompt(
+        session.id,
+        buildInitialTaskPrompt({ ...task, session_id: session.id }),
+      );
+      results.push({
+        action: task.session_id ? "reclaimed" : "created",
+        sessionID: session.id,
+        taskID: task.task_id,
+      });
+    }
+
+    return results;
+  };
 
   return {
-    "dispatch-tasks": {},
+    "dispatch-tasks": {
+      schema: {},
+      execute: dispatchTasks,
+    },
     "list-processing-tasks": {
       schema: {},
       execute: () => getRepository().listProcessingTasks(),
