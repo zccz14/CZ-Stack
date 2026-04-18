@@ -59,7 +59,7 @@ const createTaskDatabase = async (caseName: string) => {
         task.worktree_path ?? null,
         task.pull_request_url ?? null,
         task.status ?? null,
-        task.done ?? 0,
+        task.done === undefined ? 0 : task.done ? 1 : 0,
         task.updated_at ?? null,
       );
     }
@@ -199,9 +199,9 @@ describe("sqlite task runtime plugin", () => {
         },
       ]);
 
-      expect(
-        repository.listUnfinishedTasks().map((task) => task.task_id),
-      ).toEqual(["task-1"]);
+      expect(repository.listUnfinishedTasks()).toEqual([
+        expect.objectContaining({ task_id: "task-1", done: false }),
+      ]);
     } finally {
       await taskDatabase.cleanup();
     }
@@ -308,6 +308,9 @@ describe("sqlite task runtime plugin", () => {
       ]);
 
       expect(() => repository.getRequiredTaskBySessionID("session-1")).toThrow(
+        "Multiple tasks are bound to session session-1",
+      );
+      expect(() => repository.getTaskBySessionID("session-1")).toThrow(
         "Multiple tasks are bound to session session-1",
       );
     } finally {

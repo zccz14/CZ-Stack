@@ -31,7 +31,7 @@ const mapTaskRecord = (row: Record<string, unknown>): TaskRecord => ({
   pull_request_url:
     row.pull_request_url === null ? null : String(row.pull_request_url),
   status: row.status === null ? null : String(row.status),
-  done: Number(row.done),
+  done: Boolean(Number(row.done)),
   updated_at: row.updated_at === null ? null : String(row.updated_at),
 });
 

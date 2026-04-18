@@ -8,7 +8,7 @@ export type TaskRecord = {
   worktree_path: string | null;
   pull_request_url: string | null;
   status: string | null;
-  done: number;
+  done: boolean;
   updated_at: string | null;
 };
 
