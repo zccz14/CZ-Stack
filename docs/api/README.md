@@ -17,6 +17,13 @@ CZ-Stack 的 API 文档必须与 `contract-package` **同源生成**，而不是
 4. `/openapi.json` 是从同一份 contract 导出的消费格式，不是事实源。
 5. SDK 生成若后续接入，也只能围绕 contract 扩展，不能另起一份 API 描述。
 
+## CORS 默认边界
+
+- `@cz-stack/api` 在应用入口对全部 API 路由统一启用全局 CORS，并固定返回 `Access-Control-Allow-Origin: *`。
+- 浏览器对 API 路由发起 `OPTIONS` 预检时，由同一套全局中间件处理，不要求每个路由单独声明 `OPTIONS` 处理器。
+- 这一策略只解决浏览器跨域兼容性，不承担后端访问控制职责。
+- 如果后端需要限制访问，必须依赖独立的鉴权或网络层机制，而不是把 CORS 当成权限边界。
+
 ## 当前推荐消费链路
 
 ```text

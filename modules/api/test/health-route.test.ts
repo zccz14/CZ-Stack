@@ -73,6 +73,57 @@ describe("api package baseline", () => {
     );
   });
 
+  it("adds wildcard CORS headers to regular API responses", async () => {
+    const app = apiModule.createApp();
+
+    const response = await app.request(contractModule.healthPath, {
+      method: "GET",
+      headers: {
+        origin: "https://frontend.example",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    await expect(response.json()).resolves.toEqual({ status: "ok" });
+  });
+
+  it("handles preflight requests through the global CORS middleware", async () => {
+    const app = apiModule.createApp();
+
+    const response = await app.request(contractModule.healthPath, {
+      method: "OPTIONS",
+      headers: {
+        origin: "https://frontend.example",
+        "access-control-request-method": "GET",
+      },
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(response.headers.get("access-control-allow-methods")).toContain(
+      "GET",
+    );
+  });
+
+  it("applies the same CORS headers to the shared OpenAPI document route", async () => {
+    const app = apiModule.createApp();
+
+    const response = await app.request("/openapi.json", {
+      method: "GET",
+      headers: {
+        origin: "https://frontend.example",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(response.headers.get("content-type")).toContain("application/json");
+    await expect(response.json()).resolves.toEqual(
+      contractModule.openApiDocument,
+    );
+  });
+
   it("exposes the shared OpenAPI document", async () => {
     const app = apiModule.createApp();
 
