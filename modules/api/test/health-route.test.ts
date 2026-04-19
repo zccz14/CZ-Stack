@@ -106,6 +106,24 @@ describe("api package baseline", () => {
     );
   });
 
+  it("applies the same CORS headers to the shared OpenAPI document route", async () => {
+    const app = apiModule.createApp();
+
+    const response = await app.request("/openapi.json", {
+      method: "GET",
+      headers: {
+        origin: "https://frontend.example",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(response.headers.get("content-type")).toContain("application/json");
+    await expect(response.json()).resolves.toEqual(
+      contractModule.openApiDocument,
+    );
+  });
+
   it("exposes the shared OpenAPI document", async () => {
     const app = apiModule.createApp();
 
@@ -145,14 +163,5 @@ describe("api package baseline", () => {
     );
     expect(apiSource).not.toContain("SwaggerUIBundle");
     expect(apiSource).not.toContain("contract/generated");
-  });
-
-  it("keeps the CORS policy global and documented in the app boundary", async () => {
-    const apiSource = await readFile(apiSourceUrl, "utf8");
-
-    expect(apiSource).toContain('import { cors } from "hono/cors";');
-    expect(apiSource).toContain('app.use("*", cors({ origin: "*" }));');
-    expect(apiSource).toContain("CORS only handles browser compatibility");
-    expect(apiSource).not.toContain("app.options(");
   });
 });
